@@ -1,0 +1,12 @@
+# Backend
+backend/node_modules/
+backend/.env
+backend/*.log
+backend/uploads/
+backend/sql_output.txt
+
+# Root/Common
+.DS_Store
+Thumbs.db
+node_modules/
+.env
