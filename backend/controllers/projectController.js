@@ -36,10 +36,10 @@ exports.getAllProjects = async (req, res) => {
         query += ' GROUP BY p.id ORDER BY p.created_at DESC';
 
         const [projects] = await db.execute(query, params);
-        res.json(projects);
+        res.json({ success: true, data: projects });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 
@@ -73,12 +73,15 @@ exports.getProjectById = async (req, res) => {
         );
 
         res.json({
-            ...projects[0],
-            tasks
+            success: true,
+            data: {
+                ...projects[0],
+                tasks
+            }
         });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 

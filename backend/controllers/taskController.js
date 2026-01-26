@@ -52,10 +52,10 @@ exports.getAllTasks = async (req, res) => {
         query += ' ORDER BY t.created_at DESC';
 
         const [tasks] = await db.execute(query, params);
-        res.json(tasks);
+        res.json({ success: true, data: tasks });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 
@@ -85,10 +85,10 @@ exports.getMyTasks = async (req, res) => {
         query += ' ORDER BY t.deadline ASC, t.created_at DESC';
 
         const [tasks] = await db.execute(query, params);
-        res.json(tasks);
+        res.json({ success: true, data: tasks });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 
@@ -128,12 +128,15 @@ exports.getTaskById = async (req, res) => {
         );
 
         res.json({
-            ...tasks[0],
-            comments
+            success: true,
+            data: {
+                ...tasks[0],
+                comments
+            }
         });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 

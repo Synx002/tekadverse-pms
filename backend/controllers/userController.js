@@ -23,10 +23,10 @@ exports.getAllUsers = async (req, res) => {
         query += ' ORDER BY created_at DESC';
 
         const [users] = await db.execute(query, params);
-        res.json(users);
+        res.json({ success: true, data: users });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 
@@ -37,10 +37,10 @@ exports.getArtists = async (req, res) => {
             'SELECT id, name, email, profile_picture FROM users WHERE role = ? AND is_active = TRUE',
             ['artist']
         );
-        res.json(artists);
+        res.json({ success: true, data: artists });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 
@@ -64,10 +64,10 @@ exports.updateUser = async (req, res) => {
 
         await logActivity(req.user.id, 'updated_user', 'user', id, oldValue, { name, email, role, is_active }, req.ip);
 
-        res.json({ message: 'User updated successfully' });
+        res.json({ success: true, message: 'User updated successfully' });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 

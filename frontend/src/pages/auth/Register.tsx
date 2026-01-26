@@ -1,0 +1,150 @@
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { toast } from 'sonner';
+import { UserPlus } from 'lucide-react';
+import { authApi } from '../../api/auth.api';
+import { useAuthStore } from '../../store/authStore';
+import type { RegisterData } from '../../types/auth.types';
+import type { UserRole } from '../../types/user.types';
+
+const registerSchema = z.object({
+    name: z.string().min(2, 'Nama minimal 2 karakter'),
+    email: z.string().email('Email tidak valid'),
+    password: z.string().min(6, 'Password minimal 6 karakter'),
+    role: z.enum(['admin', 'manager', 'artist']),
+});
+
+export const Register = () => {
+    const navigate = useNavigate();
+    const setAuth = useAuthStore((state) => state.setAuth);
+    const [loading, setLoading] = useState(false);
+
+    const {
+        register,
+        handleSubmit,
+        formState: { errors },
+    } = useForm<RegisterData>({
+        resolver: zodResolver(registerSchema),
+        defaultValues: {
+            role: 'artist' as UserRole,
+        },
+    });
+
+    const onSubmit = async (data: RegisterData) => {
+        try {
+            setLoading(true);
+            const response = await authApi.register(data);
+
+            if (response.success && response.data) {
+                setAuth(response.data.user, response.data.token);
+                toast.success('Registrasi berhasil!');
+                navigate('/');
+            }
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Registrasi gagal');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
+            <div className="max-w-md w-full">
+                <div className="bg-white rounded-2xl shadow-xl p-8">
+                    {/* Header */}
+                    <div className="text-center mb-8">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
+                            <UserPlus className="w-8 h-8 text-blue-600" />
+                        </div>
+                        <h1 className="text-3xl font-bold text-gray-900">Create Account</h1>
+                        <p className="text-gray-600 mt-2">Join Tekadverse PMS</p>
+                    </div>
+
+                    {/* Form */}
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Full Name
+                            </label>
+                            <input
+                                {...register('name')}
+                                type="text"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="John Doe"
+                            />
+                            {errors.name && (
+                                <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Email
+                            </label>
+                            <input
+                                {...register('email')}
+                                type="email"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="your@email.com"
+                            />
+                            {errors.email && (
+                                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Password
+                            </label>
+                            <input
+                                {...register('password')}
+                                type="password"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="••••••••"
+                            />
+                            {errors.password && (
+                                <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Role
+                            </label>
+                            <select
+                                {...register('role')}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                                <option value="artist">Artist</option>
+                                <option value="manager">Manager</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                            {errors.role && (
+                                <p className="mt-1 text-sm text-red-600">{errors.role.message}</p>
+                            )}
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {loading ? 'Creating account...' : 'Create Account'}
+                        </button>
+                    </form>
+
+                    {/* Login link */}
+                    <p className="mt-6 text-center text-sm text-gray-600">
+                        Already have an account?{' '}
+                        <Link to="/login" className="text-blue-600 hover:text-blue-700 font-medium">
+                            Sign in here
+                        </Link>
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+};

@@ -27,10 +27,10 @@ exports.getAllClients = async (req, res) => {
         query += ' ORDER BY c.created_at DESC';
 
         const [clients] = await db.execute(query, params);
-        res.json(clients);
+        res.json({ success: true, data: clients });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 
@@ -58,12 +58,15 @@ exports.getClientById = async (req, res) => {
         );
 
         res.json({
-            ...clients[0],
-            project_count: projects[0].project_count
+            success: true,
+            data: {
+                ...clients[0],
+                project_count: projects[0].project_count
+            }
         });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 

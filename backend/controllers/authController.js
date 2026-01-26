@@ -29,15 +29,18 @@ exports.register = async (req, res) => {
         );
 
         // Log activity
-        await logActivity(req.user.id, 'created_user', 'user', result.insertId, null, { name, email, role }, req.ip);
+        await logActivity(result.insertId, 'self_registered', 'user', result.insertId, null, { name, email, role }, req.ip);
 
         res.status(201).json({
+            success: true,
             message: 'User registered successfully',
-            userId: result.insertId
+            data: {
+                userId: result.insertId
+            }
         });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 
@@ -57,19 +60,19 @@ exports.login = async (req, res) => {
         );
 
         if (users.length === 0) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
 
         const user = users[0];
 
         if (!user.is_active) {
-            return res.status(401).json({ message: 'Account is deactivated' });
+            return res.status(401).json({ success: false, message: 'Account is deactivated' });
         }
 
         // Check password
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
 
         // Create token
@@ -83,18 +86,22 @@ exports.login = async (req, res) => {
         await logActivity(user.id, 'login', 'user', user.id, null, null, req.ip);
 
         res.json({
-            token,
-            user: {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                profile_picture: user.profile_picture
+            success: true,
+            message: 'Login successful',
+            data: {
+                token,
+                user: {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    role: user.role,
+                    profile_picture: user.profile_picture
+                }
             }
         });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 
@@ -107,12 +114,15 @@ exports.getMe = async (req, res) => {
         );
 
         if (users.length === 0) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        res.json(users[0]);
+        res.json({
+            success: true,
+            data: users[0]
+        });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
