@@ -4,6 +4,7 @@ import { ArrowLeft, Edit, Trash2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { projectsApi } from '../../api/projects.api';
 import { tasksApi } from '../../api/tasks.api';
+import { TaskFormModal } from '../tasks/TaskFormModal';
 import type { Project } from '../../types/project.types';
 import type { Task } from '../../types/task.types';
 import { format } from 'date-fns';
@@ -14,6 +15,7 @@ export const ProjectDetail = () => {
     const [project, setProject] = useState<Project | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
+    const [showTaskModal, setShowTaskModal] = useState(false);
 
     useEffect(() => {
         if (id) {
@@ -140,7 +142,10 @@ export const ProjectDetail = () => {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200">
                 <div className="p-6 border-b border-gray-200 flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-gray-900">Tasks</h2>
-                    <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                    <button
+                        onClick={() => setShowTaskModal(true)}
+                        className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
+                    >
                         <Plus className="w-5 h-5" />
                         Add Task
                     </button>
@@ -172,6 +177,17 @@ export const ProjectDetail = () => {
                     )}
                 </div>
             </div>
+
+            {showTaskModal && (
+                <TaskFormModal
+                    projectId={Number(id)}
+                    onClose={() => setShowTaskModal(false)}
+                    onSuccess={() => {
+                        setShowTaskModal(false);
+                        loadProjectDetail();
+                    }}
+                />
+            )}
         </div>
     );
 };

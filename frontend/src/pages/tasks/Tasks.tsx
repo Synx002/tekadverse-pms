@@ -1,22 +1,21 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Filter, LayoutGrid, List } from 'lucide-react';
 import { toast } from 'sonner';
 import { tasksApi } from '../../api/tasks.api';
 import type { Task, TaskStatus, TaskPriority } from '../../types/task.types';
 import { TaskBoard } from './TaskBoard';
 import { TaskList } from './TaskList';
-import { useAuthStore } from '../../store/authStore';
+import { TaskFormModal } from '../../components/tasks/TaskFormModal';
 
 export const Tasks = () => {
-    const navigate = useNavigate();
-    const user = useAuthStore((state) => state.user);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
     const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'all'>('all');
+    const [showModal, setShowModal] = useState(false);
+    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
     useEffect(() => {
         loadTasks();
@@ -50,8 +49,11 @@ export const Tasks = () => {
                     <p className="text-gray-600 mt-1">Manage and track all tasks</p>
                 </div>
                 <button
-                    onClick={() => navigate('/tasks/new')}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                    onClick={() => {
+                        setSelectedTask(null);
+                        setShowModal(true);
+                    }}
+                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
                 >
                     <Plus className="w-5 h-5" />
                     New Task
@@ -128,6 +130,17 @@ export const Tasks = () => {
                 <TaskBoard tasks={filteredTasks} onRefresh={loadTasks} />
             ) : (
                 <TaskList tasks={filteredTasks} onRefresh={loadTasks} />
+            )}
+
+            {showModal && (
+                <TaskFormModal
+                    task={selectedTask}
+                    onClose={() => setShowModal(false)}
+                    onSuccess={() => {
+                        setShowModal(false);
+                        loadTasks();
+                    }}
+                />
             )}
         </div>
     );

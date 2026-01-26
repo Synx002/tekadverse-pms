@@ -7,12 +7,11 @@ import { commentsApi } from '../../api/comments.api';
 import type { Task } from '../../types/task.types';
 import type { Comment } from '../../types/comment.types';
 import { format } from 'date-fns';
-import { useAuthStore } from '../../store/authStore';
+import { BASE_URL } from '../../api/axios';
 
 export const TaskDetail = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const user = useAuthStore((state) => state.user);
     const [task, setTask] = useState<Task | null>(null);
     const [comments, setComments] = useState<Comment[]>([]);
     const [newComment, setNewComment] = useState('');
@@ -149,8 +148,12 @@ export const TaskDetail = () => {
                         <div className="space-y-4 mb-6">
                             {comments.map((comment) => (
                                 <div key={comment.id} className="flex gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-medium flex-shrink-0">
-                                        {comment.user?.name.charAt(0).toUpperCase()}
+                                    <div className="w-8 h-8 rounded-full overflow-hidden bg-blue-500 text-white flex items-center justify-center font-medium flex-shrink-0">
+                                        {comment.user?.profile_picture ? (
+                                            <img src={`${BASE_URL}/${comment.user.profile_picture}`} alt={comment.user.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            comment.user?.name.charAt(0).toUpperCase()
+                                        )}
                                     </div>
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">

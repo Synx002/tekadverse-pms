@@ -146,7 +146,7 @@ exports.createTask = async (req, res) => {
         const { project_id, title, description, assigned_to, priority, deadline } = req.body;
 
         if (!project_id || !title || !assigned_to) {
-            return res.status(400).json({ message: 'Project, title, and assigned artist are required' });
+            return res.status(400).json({ success: false, message: 'Project, title, and assigned artist are required' });
         }
 
         const [result] = await db.execute(
@@ -187,8 +187,14 @@ exports.createTask = async (req, res) => {
         await logActivity(req.user.id, 'created_task', 'task', result.insertId, null, { title, assigned_to }, req.ip);
 
         res.status(201).json({
+            success: true,
             message: 'Task created and assigned successfully',
-            taskId: result.insertId
+            data: {
+                id: result.insertId,
+                title,
+                project_id,
+                assigned_to
+            }
         });
     } catch (error) {
         console.error(error);

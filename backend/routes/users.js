@@ -6,7 +6,8 @@ const upload = require('../config/multer');
 
 router.get('/', auth, authorize('admin', 'manager'), userController.getAllUsers);
 router.get('/artists', auth, authorize('manager', 'admin'), userController.getArtists);
-router.put('/:id', auth, authorize('admin'), userController.updateUser);
+router.post('/', auth, authorize('admin'), upload.single('profile_picture'), userController.createUser);
+router.put('/:id', auth, authorize('admin'), upload.single('profile_picture'), userController.updateUser);
 router.delete('/:id', auth, authorize('admin'), userController.deleteUser);
 router.post('/upload-profile', auth, upload.single('profile_picture'), userController.uploadProfilePicture);
 

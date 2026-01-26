@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import type { Task } from '../../types/task.types';
-import { Calendar, User, MessageSquare } from 'lucide-react';
+import { Calendar, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
+import { BASE_URL } from '../../api/axios';
 
 interface TaskListProps {
     tasks: Task[];
@@ -103,8 +104,12 @@ export const TaskList = ({ tasks }: TaskListProps) => {
                                 <td className="px-6 py-4">
                                     {task.assignee && (
                                         <div className="flex items-center gap-2">
-                                            <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-medium">
-                                                {task.assignee.name.charAt(0).toUpperCase()}
+                                            <div className="w-8 h-8 rounded-full overflow-hidden bg-blue-500 text-white flex items-center justify-center text-xs font-medium">
+                                                {task.assignee.profile_picture ? (
+                                                    <img src={`${BASE_URL}/${task.assignee.profile_picture}`} alt={task.assignee.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    task.assignee.name.charAt(0).toUpperCase()
+                                                )}
                                             </div>
                                             <span className="text-sm text-gray-900">{task.assignee.name}</span>
                                         </div>

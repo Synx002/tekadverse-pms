@@ -43,4 +43,9 @@ export const usersApi = {
         const { data } = await api.delete<ApiResponse<null>>(`/users/${id}`);
         return data;
     },
+
+    getArtists: async () => {
+        const { data } = await api.get<ApiResponse<User[]>>('/users/artists');
+        return data;
+    },
 };

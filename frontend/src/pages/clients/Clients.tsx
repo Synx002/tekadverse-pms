@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, Search, Building2, Mail, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import { clientsApi } from '../../api/clients.api';
+import { BASE_URL } from '../../api/axios';
 import type { Client } from '../../types/client.types';
 
 export const Clients = () => {
@@ -77,7 +78,7 @@ export const Clients = () => {
                             <div className="flex items-start gap-4 mb-4">
                                 {client.logo ? (
                                     <img
-                                        src={client.logo}
+                                        src={`${BASE_URL}/${client.logo}`}
                                         alt={client.name}
                                         className="w-12 h-12 rounded-lg object-cover"
                                     />

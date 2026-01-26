@@ -1,14 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Plus, Search, Shield, Briefcase, Palette } from 'lucide-react';
 import { toast } from 'sonner';
+import { Edit, Trash2 } from 'lucide-react';
 import { usersApi } from '../../api/users.api';
+import { BASE_URL } from '../../api/axios';
 import type { User, UserRole } from '../../types/user.types';
+import { UserFormModal } from '../../components/users/UserFormModal';
 
 export const Users = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
+    const [showModal, setShowModal] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
     useEffect(() => {
         loadUsers();
@@ -52,6 +57,23 @@ export const Users = () => {
         return colors[role];
     };
 
+    const handleEditUser = (user: User) => {
+        setSelectedUser(user);
+        setShowModal(true);
+    };
+
+    const handleDeleteUser = async (id: number) => {
+        if (!window.confirm('Are you sure you want to delete this user?')) return;
+
+        try {
+            await usersApi.delete(id);
+            toast.success('User deleted successfully');
+            loadUsers();
+        } catch (error) {
+            toast.error('Failed to delete user');
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -60,7 +82,13 @@ export const Users = () => {
                     <h1 className="text-2xl font-bold text-gray-900">Users</h1>
                     <p className="text-gray-600 mt-1">Manage team members</p>
                 </div>
-                <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                <button
+                    onClick={() => {
+                        setSelectedUser(null);
+                        setShowModal(true);
+                    }}
+                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                >
                     <Plus className="w-5 h-5" />
                     New User
                 </button>
@@ -130,7 +158,7 @@ export const Users = () => {
                                         <div className="flex items-center gap-3">
                                             {user.profile_picture ? (
                                                 <img
-                                                    src={user.profile_picture}
+                                                    src={`${BASE_URL}/${user.profile_picture}`}
                                                     alt={user.name}
                                                     className="w-10 h-10 rounded-full object-cover"
                                                 />
@@ -160,15 +188,37 @@ export const Users = () => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                                            Edit
-                                        </button>
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={() => handleEditUser(user)}
+                                                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                                            >
+                                                <Edit className="w-5 h-5 cursor-pointer" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteUser(user.id)}
+                                                className="text-red-600 hover:text-red-700 text-sm font-medium"
+                                            >
+                                                <Trash2 className="w-5 h-5 cursor-pointer" />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
+            )}
+
+            {showModal && (
+                <UserFormModal
+                    user={selectedUser}
+                    onClose={() => setShowModal(false)}
+                    onSuccess={() => {
+                        setShowModal(false);
+                        loadUsers();
+                    }}
+                />
             )}
         </div>
     );

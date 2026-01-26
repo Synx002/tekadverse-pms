@@ -30,6 +30,52 @@ exports.getAllUsers = async (req, res) => {
     }
 };
 
+// Create new user (Admin only)
+exports.createUser = async (req, res) => {
+    try {
+        const { name, email, password, role } = req.body;
+
+        if (!name || !email || !password || !role) {
+            return res.status(400).json({ success: false, message: 'Please provide all required fields' });
+        }
+
+        // Check if user exists
+        const [existing] = await db.execute('SELECT id FROM users WHERE email = ?', [email]);
+        if (existing.length > 0) {
+            return res.status(400).json({ success: false, message: 'Email already registered' });
+        }
+
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Handle profile picture
+        const profile_picture = req.file ? req.file.path.replace(/\\/g, '/') : null;
+
+        // Insert user
+        const [result] = await db.execute(
+            'INSERT INTO users (name, email, password, role, profile_picture) VALUES (?, ?, ?, ?, ?)',
+            [name, email, hashedPassword, role, profile_picture]
+        );
+
+        // Log activity
+        await logActivity(req.user.id, 'created_user', 'user', result.insertId, null, { name, email, role }, req.ip);
+
+        res.status(201).json({
+            success: true,
+            message: 'User created successfully',
+            data: {
+                id: result.insertId,
+                name,
+                email,
+                role
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
 // Get artists only (For manager to assign tasks)
 exports.getArtists = async (req, res) => {
     try {
@@ -48,21 +94,38 @@ exports.getArtists = async (req, res) => {
 exports.updateUser = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, role, is_active } = req.body;
+        const { name, email, role, is_active, password } = req.body;
 
         const [existing] = await db.execute('SELECT * FROM users WHERE id = ?', [id]);
         if (existing.length === 0) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({ success: false, message: 'User not found' });
         }
 
         const oldValue = existing[0];
+        let profile_picture = oldValue.profile_picture;
 
-        await db.execute(
-            'UPDATE users SET name = ?, email = ?, role = ?, is_active = ? WHERE id = ?',
-            [name, email, role, is_active, id]
-        );
+        if (req.file) {
+            profile_picture = req.file.path.replace(/\\/g, '/');
+        }
 
-        await logActivity(req.user.id, 'updated_user', 'user', id, oldValue, { name, email, role, is_active }, req.ip);
+        // Handle is_active from FormData (comes as string)
+        const isActive = is_active === 'true' || is_active === true;
+
+        let query = 'UPDATE users SET name = ?, email = ?, role = ?, is_active = ?, profile_picture = ?';
+        const params = [name, email, role, isActive, profile_picture];
+
+        if (password && password.trim() !== '') {
+            const hashedPassword = await bcrypt.hash(password, 10);
+            query += ', password = ?';
+            params.push(hashedPassword);
+        }
+
+        query += ' WHERE id = ?';
+        params.push(id);
+
+        await db.execute(query, params);
+
+        await logActivity(req.user.id, 'updated_user', 'user', id, oldValue, { name, email, role, is_active: isActive }, req.ip);
 
         res.json({ success: true, message: 'User updated successfully' });
     } catch (error) {
@@ -76,19 +139,33 @@ exports.deleteUser = async (req, res) => {
     try {
         const { id } = req.params;
 
+        // Prevent self-deletion
+        if (parseInt(id) === req.user.id) {
+            return res.status(400).json({ success: false, message: 'You cannot delete your own account' });
+        }
+
         const [existing] = await db.execute('SELECT * FROM users WHERE id = ?', [id]);
         if (existing.length === 0) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({ success: false, message: 'User not found' });
         }
 
         await db.execute('DELETE FROM users WHERE id = ?', [id]);
 
         await logActivity(req.user.id, 'deleted_user', 'user', id, existing[0], null, req.ip);
 
-        res.json({ message: 'User deleted successfully' });
+        res.json({ success: true, message: 'User deleted successfully' });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+
+        // Handle Foreign Key Constraint error
+        if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot delete user because they have associated tasks or projects. Try deactivating the account instead.'
+            });
+        }
+
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 

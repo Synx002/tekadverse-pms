@@ -5,6 +5,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useNotificationStore } from '../../store/notificationsStore';
 import { useUIStore } from '../../store/uiStore';
 import { authApi } from '../../api/auth.api';
+import { BASE_URL } from '../../api/axios';
 
 export const Header = () => {
     const navigate = useNavigate();
@@ -70,8 +71,12 @@ export const Header = () => {
                                 onClick={() => setShowUserMenu(!showUserMenu)}
                                 className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100"
                             >
-                                <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-medium">
-                                    {user?.name.charAt(0).toUpperCase()}
+                                <div className="w-8 h-8 rounded-full overflow-hidden bg-blue-500 text-white flex items-center justify-center font-medium">
+                                    {user?.profile_picture ? (
+                                        <img src={`${BASE_URL}/${user.profile_picture}`} alt={user.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        user?.name.charAt(0).toUpperCase()
+                                    )}
                                 </div>
                                 <div className="hidden sm:block text-left">
                                     <p className="text-sm font-medium text-gray-700">{user?.name}</p>
