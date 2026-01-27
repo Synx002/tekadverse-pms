@@ -20,8 +20,8 @@ export const ProjectCard = ({ project, onClick }: ProjectCardProps) => {
         return colors[status] || 'bg-gray-100 text-gray-800';
     };
 
-    const tasksCompleted = project.tasks_completed || 0;
-    const tasksTotal = project.tasks_count || 0;
+    const tasksCompleted = Number(project.tasks_completed) || 0;
+    const tasksTotal = Number(project.tasks_count) || 0;
     const progress = tasksTotal > 0 ? (tasksCompleted / tasksTotal) * 100 : 0;
 
     return (

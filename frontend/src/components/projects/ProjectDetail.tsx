@@ -4,9 +4,12 @@ import { ArrowLeft, Edit, Trash2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { projectsApi } from '../../api/projects.api';
 import { tasksApi } from '../../api/tasks.api';
+import { clientsApi } from '../../api/clients.api';
 import { TaskFormModal } from '../tasks/TaskFormModal';
+import { ProjectFormModal } from './ProjectFormModal';
 import type { Project } from '../../types/project.types';
 import type { Task } from '../../types/task.types';
+import type { Client } from '../../types/client.types';
 import { format } from 'date-fns';
 
 export const ProjectDetail = () => {
@@ -14,14 +17,26 @@ export const ProjectDetail = () => {
     const navigate = useNavigate();
     const [project, setProject] = useState<Project | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
     const [showTaskModal, setShowTaskModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
 
     useEffect(() => {
         if (id) {
             loadProjectDetail();
+            loadClients();
         }
     }, [id]);
+
+    const loadClients = async () => {
+        try {
+            const response = await clientsApi.getAll();
+            setClients(response.data || []);
+        } catch (error) {
+            console.error('Failed to load clients');
+        }
+    };
 
     const loadProjectDetail = async () => {
         try {
@@ -37,6 +52,20 @@ export const ProjectDetail = () => {
             navigate('/projects');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDeleteProject = async () => {
+        if (!window.confirm('Are you sure you want to delete this project? This will also delete all associated tasks.')) {
+            return;
+        }
+
+        try {
+            await projectsApi.delete(Number(id));
+            toast.success('Project deleted successfully');
+            navigate('/projects');
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to delete project');
         }
     };
 
@@ -63,7 +92,7 @@ export const ProjectDetail = () => {
         return null;
     }
 
-    const completedTasks = tasks.filter(t => t.status === 'done').length;
+    const completedTasks = tasks.filter(t => t.status === 'done' || t.status === 'approved').length;
     const progress = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
 
     return (
@@ -92,10 +121,16 @@ export const ProjectDetail = () => {
                         )}
                     </div>
                     <div className="flex gap-2">
-                        <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg">
+                        <button
+                            onClick={() => setShowEditModal(true)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                        >
                             <Edit className="w-5 h-5" />
                         </button>
-                        <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
+                        <button
+                            onClick={handleDeleteProject}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                        >
                             <Trash2 className="w-5 h-5" />
                         </button>
                     </div>
@@ -104,7 +139,7 @@ export const ProjectDetail = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div>
                         <p className="text-sm text-gray-600">Client</p>
-                        <p className="font-medium text-gray-900">{project.client?.name || 'N/A'}</p>
+                        <p className="font-medium text-gray-900">{project.client_name || project.client?.name || 'N/A'}</p>
                     </div>
                     <div>
                         <p className="text-sm text-gray-600">Start Date</p>
@@ -161,16 +196,27 @@ export const ProjectDetail = () => {
                             <div
                                 key={task.id}
                                 onClick={() => navigate(`/tasks/${task.id}`)}
-                                className="p-4 hover:bg-gray-50 cursor-pointer"
+                                className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
                             >
-                                <h3 className="font-medium text-gray-900">{task.title}</h3>
-                                <div className="flex items-center gap-3 mt-2">
-                                    <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-800">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="font-medium text-gray-900">{task.title}</h3>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getStatusColor(task.status)} uppercase tracking-wider`}>
                                         {task.status.replace('_', ' ')}
                                     </span>
-                                    <span className="text-xs text-gray-600">
-                                        {task.assignee?.name}
-                                    </span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-4 text-xs">
+                                    <div className="flex items-center gap-1.5 text-gray-600">
+                                        <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-[10px] text-blue-700 font-bold uppercase">
+                                            {task.assigned_to_name ? task.assigned_to_name.charAt(0) : 'U'}
+                                        </div>
+                                        <span>{task.assigned_to_name || 'Unassigned'}</span>
+                                    </div>
+                                    {task.deadline && (
+                                        <div className="flex items-center gap-1.5 text-gray-600">
+                                            <span className="text-gray-400">Deadline:</span>
+                                            <span className="font-medium">{format(new Date(task.deadline), 'MMM dd, yyyy')}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))
@@ -184,6 +230,18 @@ export const ProjectDetail = () => {
                     onClose={() => setShowTaskModal(false)}
                     onSuccess={() => {
                         setShowTaskModal(false);
+                        loadProjectDetail();
+                    }}
+                />
+            )}
+
+            {showEditModal && (
+                <ProjectFormModal
+                    project={project}
+                    clients={clients}
+                    onClose={() => setShowEditModal(false)}
+                    onSuccess={() => {
+                        setShowEditModal(false);
                         loadProjectDetail();
                     }}
                 />

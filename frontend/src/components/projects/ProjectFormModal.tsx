@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { projectsApi } from '../../api/projects.api';
-import type { CreateProjectData, ProjectStatus } from '../../types/project.types';
+import type { Project, CreateProjectData, ProjectStatus } from '../../types/project.types';
 import type { Client } from '../../types/client.types';
 
 const projectSchema = z.object({
@@ -17,34 +17,62 @@ const projectSchema = z.object({
     status: z.enum(['planning', 'active', 'on_hold', 'completed', 'cancelled']).optional(),
 });
 
+type ProjectFormData = z.infer<typeof projectSchema>;
+
 interface ProjectFormModalProps {
+    project?: Project | null;
     clients: Client[];
     onClose: () => void;
     onSuccess: () => void;
 }
 
-export const ProjectFormModal = ({ clients, onClose, onSuccess }: ProjectFormModalProps) => {
+export const ProjectFormModal = ({ project, clients, onClose, onSuccess }: ProjectFormModalProps) => {
     const [loading, setLoading] = useState(false);
+    const isEdit = !!project;
 
     const {
         register,
         handleSubmit,
         formState: { errors },
-    } = useForm<CreateProjectData>({
+        reset
+    } = useForm<ProjectFormData>({
         resolver: zodResolver(projectSchema),
         defaultValues: {
-            status: 'planning' as ProjectStatus,
+            client_id: project?.client_id || 0,
+            name: project?.name || '',
+            description: project?.description || '',
+            start_date: project?.start_date ? new Date(project.start_date).toISOString().split('T')[0] : '',
+            end_date: project?.end_date ? new Date(project.end_date).toISOString().split('T')[0] : '',
+            status: (project?.status || 'planning') as ProjectStatus,
         },
     });
 
-    const onSubmit = async (data: CreateProjectData) => {
+    useEffect(() => {
+        if (project) {
+            reset({
+                client_id: project.client_id,
+                name: project.name,
+                description: project.description || '',
+                start_date: project.start_date ? new Date(project.start_date).toISOString().split('T')[0] : '',
+                end_date: project.end_date ? new Date(project.end_date).toISOString().split('T')[0] : '',
+                status: project.status,
+            });
+        }
+    }, [project, reset]);
+
+    const onSubmit = async (data: ProjectFormData) => {
         try {
             setLoading(true);
-            await projectsApi.create(data);
-            toast.success('Project created successfully');
+            if (isEdit && project) {
+                await projectsApi.update(project.id, data);
+                toast.success('Project updated successfully');
+            } else {
+                await projectsApi.create(data as CreateProjectData);
+                toast.success('Project created successfully');
+            }
             onSuccess();
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to create project');
+            toast.error(error.response?.data?.message || `Failed to ${isEdit ? 'update' : 'create'} project`);
         } finally {
             setLoading(false);
         }
@@ -55,10 +83,12 @@ export const ProjectFormModal = ({ clients, onClose, onSuccess }: ProjectFormMod
             <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                    <h2 className="text-xl font-semibold text-gray-900">Create New Project</h2>
+                    <h2 className="text-xl font-semibold text-gray-900">
+                        {isEdit ? 'Edit Project' : 'Create New Project'}
+                    </h2>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                     >
                         <X className="w-5 h-5" />
                     </button>
@@ -74,7 +104,7 @@ export const ProjectFormModal = ({ clients, onClose, onSuccess }: ProjectFormMod
                             {...register('client_id', { valueAsNumber: true })}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
-                            <option value="">Select client</option>
+                            <option value={0}>Select client</option>
                             {clients.map((client) => (
                                 <option key={client.id} value={client.id}>
                                     {client.name}
@@ -153,20 +183,20 @@ export const ProjectFormModal = ({ clients, onClose, onSuccess }: ProjectFormMod
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-3 pt-4">
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
-                        >
-                            {loading ? 'Creating...' : 'Create Project'}
-                        </button>
+                    <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                            className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors cursor-pointer"
                         >
                             Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 cursor-pointer"
+                        >
+                            {loading ? (isEdit ? 'Saving...' : 'Creating...') : (isEdit ? 'Save Changes' : 'Create Project')}
                         </button>
                     </div>
                 </form>

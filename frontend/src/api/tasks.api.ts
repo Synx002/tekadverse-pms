@@ -24,7 +24,7 @@ export const tasksApi = {
     },
 
     updateStatus: async (id: number, status: string) => {
-        const { data } = await api.patch<ApiResponse<Task>>(`/tasks/${id}/status`, { status });
+        const { data } = await api.put<ApiResponse<Task>>(`/tasks/${id}/status`, { status });
         return data;
     },
 

@@ -15,6 +15,8 @@ export interface Project {
     created_at: string;
     updated_at: string;
     client?: Client;
+    client_name?: string;
+    client_company?: string;
     creator?: User;
     tasks_count?: number;
     tasks_completed?: number;

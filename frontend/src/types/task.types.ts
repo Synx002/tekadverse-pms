@@ -1,7 +1,7 @@
 import type { Project } from "./project.types";
 import type { User } from "./user.types";
 
-export type TaskStatus = 'todo' | 'working' | 'need_update' | 'under_review' | 'approved' | 'done' | 'dropped';
+export type TaskStatus = 'todo' | 'working' | 'finished' | 'need_update' | 'under_review' | 'approved' | 'done' | 'dropped';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
 export interface Task {
@@ -21,6 +21,12 @@ export interface Task {
     project?: Project;
     assignee?: User;
     assigner?: User;
+    assigned_to_name?: string;
+    assigned_to_email?: string;
+    artist_profile?: string;
+    assigned_by_name?: string;
+    project_name?: string;
+    client_name?: string;
     comments_count?: number;
 }
 

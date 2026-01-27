@@ -10,6 +10,7 @@ import { usersApi } from '../../api/users.api';
 import type { Task, CreateTaskData, UpdateTaskData } from '../../types/task.types';
 import type { Project } from '../../types/project.types';
 import type { User } from '../../types/user.types';
+import { useAuthStore } from '../../store/authStore';
 
 const taskSchema = z.object({
     title: z.string().min(3, 'Title must be at least 3 characters'),
@@ -18,7 +19,7 @@ const taskSchema = z.object({
     assigned_to: z.number().min(1, 'Please select an artist'),
     priority: z.enum(['low', 'medium', 'high', 'urgent']),
     deadline: z.string().optional().or(z.literal('')),
-    status: z.enum(['todo', 'working', 'need_update', 'under_review', 'approved', 'done', 'dropped']).optional(),
+    status: z.enum(['todo', 'working', 'finished', 'need_update', 'under_review', 'approved', 'done', 'dropped']).optional(),
 });
 
 type TaskFormData = z.infer<typeof taskSchema>;
@@ -35,6 +36,11 @@ export const TaskFormModal = ({ task, projectId, onClose, onSuccess }: TaskFormM
     const [projects, setProjects] = useState<Project[]>([]);
     const [artists, setArtists] = useState<User[]>([]);
     const [fetchingData, setFetchingData] = useState(true);
+    const { user } = useAuthStore();
+    const isArtist = user?.role === 'artist';
+
+    // Check if task is locked for artist
+    const isLocked = isArtist && task && ['need_update', 'under_review', 'approved', 'done'].includes(task.status);
 
     const isEdit = !!task;
 
@@ -72,6 +78,11 @@ export const TaskFormModal = ({ task, projectId, onClose, onSuccess }: TaskFormM
     }, [task, reset]);
 
     const loadData = async () => {
+        if (isArtist) {
+            setFetchingData(false);
+            return;
+        }
+
         try {
             setFetchingData(true);
             const [projectsRes, artistsRes] = await Promise.all([
@@ -135,7 +146,8 @@ export const TaskFormModal = ({ task, projectId, onClose, onSuccess }: TaskFormM
                         <label className="text-sm font-medium text-gray-700">Task Title</label>
                         <input
                             {...register('title')}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            disabled={isArtist}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
                             placeholder="Design Homepage"
                         />
                         {errors.title && <p className="text-xs text-red-500">{errors.title.message}</p>}
@@ -146,7 +158,8 @@ export const TaskFormModal = ({ task, projectId, onClose, onSuccess }: TaskFormM
                         <textarea
                             {...register('description')}
                             rows={3}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            disabled={isArtist}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
                             placeholder="Task details and requirements..."
                         />
                     </div>
@@ -154,30 +167,47 @@ export const TaskFormModal = ({ task, projectId, onClose, onSuccess }: TaskFormM
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Project</label>
-                            <select
-                                {...register('project_id', { valueAsNumber: true })}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                disabled={!!projectId && !isEdit}
-                            >
-                                <option value={0}>Select Project</option>
-                                {projects.map((p) => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                            </select>
+                            {isArtist ? (
+                                <input
+                                    value={task?.project?.name || task?.project_name || 'Current Project'}
+                                    disabled
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
+                                />
+                            ) : (
+                                <select
+                                    {...register('project_id', { valueAsNumber: true })}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                                    disabled={(!!projectId && !isEdit) || isArtist}
+                                >
+                                    <option value={0}>Select Project</option>
+                                    {projects.map((p) => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))}
+                                </select>
+                            )}
                             {errors.project_id && <p className="text-xs text-red-500">{errors.project_id.message}</p>}
                         </div>
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Assign To Artist</label>
-                            <select
-                                {...register('assigned_to', { valueAsNumber: true })}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value={0}>Select Artist</option>
-                                {artists.map((a) => (
-                                    <option key={a.id} value={a.id}>{a.name}</option>
-                                ))}
-                            </select>
+                            {isArtist ? (
+                                <input
+                                    value={task?.assigned_to_name || task?.assignee?.name || 'Me'}
+                                    disabled
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
+                                />
+                            ) : (
+                                <select
+                                    {...register('assigned_to', { valueAsNumber: true })}
+                                    disabled={isArtist}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                                >
+                                    <option value={0}>Select Artist</option>
+                                    {artists.map((a) => (
+                                        <option key={a.id} value={a.id}>{a.name}</option>
+                                    ))}
+                                </select>
+                            )}
                             {errors.assigned_to && <p className="text-xs text-red-500">{errors.assigned_to.message}</p>}
                         </div>
 
@@ -185,7 +215,8 @@ export const TaskFormModal = ({ task, projectId, onClose, onSuccess }: TaskFormM
                             <label className="text-sm font-medium text-gray-700">Priority</label>
                             <select
                                 {...register('priority')}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                disabled={isArtist}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
                             >
                                 <option value="low">Low</option>
                                 <option value="medium">Medium</option>
@@ -202,7 +233,8 @@ export const TaskFormModal = ({ task, projectId, onClose, onSuccess }: TaskFormM
                                 <input
                                     {...register('deadline')}
                                     type="date"
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    disabled={isArtist}
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
                                 />
                             </div>
                         </div>
@@ -210,18 +242,27 @@ export const TaskFormModal = ({ task, projectId, onClose, onSuccess }: TaskFormM
                         {isEdit && (
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700">Status</label>
-                                <select
-                                    {...register('status')}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                >
-                                    <option value="todo">To Do</option>
-                                    <option value="working">Working</option>
-                                    <option value="need_update">Need Update</option>
-                                    <option value="under_review">Under Review</option>
-                                    <option value="approved">Approved</option>
-                                    <option value="done">Done</option>
-                                    <option value="dropped">Dropped</option>
-                                </select>
+                                {isLocked ? (
+                                    <input
+                                        value={task?.status.replace('_', ' ').toUpperCase()}
+                                        disabled
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
+                                    />
+                                ) : (
+                                    <select
+                                        {...register('status')}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="todo">To Do</option>
+                                        <option value="working">Working</option>
+                                        <option value="finished">Finished</option>
+                                        <option value="need_update">Need Update</option>
+                                        <option value="under_review">Under Review</option>
+                                        <option value="approved">Approved</option>
+                                        <option value="done">Done</option>
+                                        <option value="dropped">Dropped</option>
+                                    </select>
+                                )}
                             </div>
                         )}
                     </div>

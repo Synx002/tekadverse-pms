@@ -84,10 +84,11 @@ export const Tasks = () => {
                             <option value="all">All Status</option>
                             <option value="todo">To Do</option>
                             <option value="working">Working</option>
+                            <option value="finished">Finished</option>
                             <option value="need_update">Need Update</option>
                             <option value="under_review">Under Review</option>
-                            <option value="approved">Approved</option>
                             <option value="done">Done</option>
+                            <option value="approved">Approved</option>
                             <option value="dropped">Dropped</option>
                         </select>
 

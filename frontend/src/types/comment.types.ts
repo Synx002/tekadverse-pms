@@ -8,6 +8,9 @@ export interface Comment {
     created_at: string;
     updated_at: string;
     user?: User;
+    user_name?: string;
+    user_role?: string;
+    profile_picture?: string;
 }
 
 export interface CreateCommentData {

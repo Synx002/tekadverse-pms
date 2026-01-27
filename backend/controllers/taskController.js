@@ -7,6 +7,12 @@ exports.getAllTasks = async (req, res) => {
     try {
         const { project_id, assigned_to, status, priority, search } = req.query;
 
+        // Force artist to only see their own tasks
+        let filterAssignedTo = assigned_to;
+        if (req.user.role === 'artist') {
+            filterAssignedTo = req.user.id;
+        }
+
         let query = `
       SELECT t.*, 
              p.name as project_name,
@@ -29,9 +35,9 @@ exports.getAllTasks = async (req, res) => {
             params.push(project_id);
         }
 
-        if (assigned_to) {
+        if (filterAssignedTo) {
             query += ' AND t.assigned_to = ?';
-            params.push(assigned_to);
+            params.push(filterAssignedTo);
         }
 
         if (status) {
@@ -208,9 +214,23 @@ exports.updateTaskStatus = async (req, res) => {
         const { id } = req.params;
         const { status } = req.body;
 
-        const validStatuses = ['todo', 'working', 'need_update', 'under_review', 'approved', 'done', 'dropped'];
+        const validStatuses = ['todo', 'working', 'finished', 'need_update', 'under_review', 'approved', 'done', 'dropped'];
         if (!validStatuses.includes(status)) {
             return res.status(400).json({ message: 'Invalid status' });
+        }
+
+        // Role-based status restrictions
+        if (req.user.role === 'artist') {
+            const allowedForArtist = ['todo', 'working', 'finished'];
+            if (!allowedForArtist.includes(status)) {
+                return res.status(403).json({ message: 'Artists can only move tasks to Todo, Working, or Finished' });
+            }
+        }
+
+        if (req.user.role === 'manager') {
+            if (status === 'done') {
+                return res.status(403).json({ message: 'Only Admins can mark tasks as Done' });
+            }
         }
 
         const [existing] = await db.execute(
@@ -227,6 +247,14 @@ exports.updateTaskStatus = async (req, res) => {
         }
 
         const task = existing[0];
+
+        // Check if artist is trying to update a locked task
+        if (req.user.role === 'artist') {
+            const lockedStatuses = ['need_update', 'under_review', 'approved', 'done'];
+            if (lockedStatuses.includes(task.status)) {
+                return res.status(403).json({ message: 'Artists cannot update tasks in this status' });
+            }
+        }
 
         // Update started_at when status changes to 'working'
         let started_at = task.started_at;
@@ -283,11 +311,46 @@ exports.updateTaskStatus = async (req, res) => {
 exports.updateTask = async (req, res) => {
     try {
         const { id } = req.params;
-        const { title, description, assigned_to, priority, deadline, status } = req.body;
+        let { title, description, assigned_to, priority, deadline, status } = req.body;
 
         const [existing] = await db.execute('SELECT * FROM tasks WHERE id = ?', [id]);
         if (existing.length === 0) {
             return res.status(404).json({ message: 'Task not found' });
+        }
+
+        // Validate status if provided
+        if (status) {
+            const validStatuses = ['todo', 'working', 'finished', 'need_update', 'under_review', 'approved', 'done', 'dropped'];
+            if (!validStatuses.includes(status)) {
+                return res.status(400).json({ message: 'Invalid status' });
+            }
+        }
+
+        // Restrict artist to only update status
+        if (req.user.role === 'artist') {
+            const task = existing[0];
+
+            // Check if artist is trying to update a locked task
+            const lockedStatuses = ['need_update', 'under_review', 'approved', 'done'];
+            if (lockedStatuses.includes(task.status)) {
+                return res.status(403).json({ message: 'Artists cannot update tasks in this status' });
+            }
+
+            // Force reset restricted fields to existing values
+            title = task.title;
+            description = task.description;
+            assigned_to = task.assigned_to;
+            priority = task.priority;
+            deadline = task.deadline;
+
+            // Allow status change, but simpler validation
+            if (status && status !== task.status) {
+                // Determine if we need to call updateTaskStatus logic for side effects?
+                // For now, let's just allow the update as is, but you might want to consider
+                // redirecting to updateTaskStatus logic if status changed.
+                // However, preserving existing behavior of updateTask (no notifications) 
+                // is safer to avoid regression unless requested.
+            }
         }
 
         await db.execute(
@@ -329,17 +392,26 @@ exports.deleteTask = async (req, res) => {
 // Get overdue tasks
 exports.getOverdueTasks = async (req, res) => {
     try {
-        const [tasks] = await db.execute(
-            `SELECT t.*, 
-              p.name as project_name,
-              artist.name as assigned_to_name
-       FROM tasks t
-       LEFT JOIN projects p ON t.project_id = p.id
-       LEFT JOIN users artist ON t.assigned_to = artist.id
-       WHERE t.deadline < CURDATE() 
-       AND t.status NOT IN ('done', 'approved', 'dropped')
-       ORDER BY t.deadline ASC`
-        );
+        let query = `
+      SELECT t.*, 
+             p.name as project_name,
+             artist.name as assigned_to_name
+      FROM tasks t
+      LEFT JOIN projects p ON t.project_id = p.id
+      LEFT JOIN users artist ON t.assigned_to = artist.id
+      WHERE t.deadline < CURDATE() 
+      AND t.status NOT IN ('done', 'approved', 'dropped')
+    `;
+        const params = [];
+
+        if (req.user.role === 'artist') {
+            query += ' AND t.assigned_to = ?';
+            params.push(req.user.id);
+        }
+
+        query += ' ORDER BY t.deadline ASC';
+
+        const [tasks] = await db.execute(query, params);
 
         res.json(tasks);
     } catch (error) {

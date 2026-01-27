@@ -9,7 +9,8 @@ exports.getAllProjects = async (req, res) => {
         let query = `
       SELECT p.*, c.name as client_name, c.logo as client_logo,
              u.name as created_by_name,
-             COUNT(t.id) as task_count
+             COUNT(t.id) as tasks_count,
+             SUM(CASE WHEN t.status IN ('done', 'approved') THEN 1 ELSE 0 END) as tasks_completed
       FROM projects p
       LEFT JOIN clients c ON p.client_id = c.id
       LEFT JOIN users u ON p.created_by = u.id
@@ -59,7 +60,7 @@ exports.getProjectById = async (req, res) => {
         );
 
         if (projects.length === 0) {
-            return res.status(404).json({ message: 'Project not found' });
+            return res.status(404).json({ success: false, message: 'Project not found' });
         }
 
         // Get tasks
@@ -103,8 +104,9 @@ exports.createProject = async (req, res) => {
         await logActivity(req.user.id, 'created_project', 'project', result.insertId, null, { name, client_id }, req.ip);
 
         res.status(201).json({
+            success: true,
             message: 'Project created successfully',
-            projectId: result.insertId
+            data: { id: result.insertId }
         });
     } catch (error) {
         console.error(error);
@@ -131,7 +133,7 @@ exports.updateProject = async (req, res) => {
 
         await logActivity(req.user.id, 'updated_project', 'project', id, existing[0], { name, status }, req.ip);
 
-        res.json({ message: 'Project updated successfully' });
+        res.json({ success: true, message: 'Project updated successfully' });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });
@@ -152,7 +154,7 @@ exports.deleteProject = async (req, res) => {
 
         await logActivity(req.user.id, 'deleted_project', 'project', id, existing[0], null, req.ip);
 
-        res.json({ message: 'Project deleted successfully' });
+        res.json({ success: true, message: 'Project deleted successfully' });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });

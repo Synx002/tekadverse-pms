@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
-import { Plus, Search, Building2, Mail, Phone } from 'lucide-react';
+import { Plus, Search, Building2, Mail, Phone, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { clientsApi } from '../../api/clients.api';
 import { BASE_URL } from '../../api/axios';
+import { ClientFormModal } from '../../components/clients/ClientFormModal';
 import type { Client } from '../../types/client.types';
 
 export const Clients = () => {
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [showModal, setShowModal] = useState(false);
+    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
     useEffect(() => {
         loadClients();
@@ -26,6 +29,22 @@ export const Clients = () => {
         }
     };
 
+    const handleDelete = async (id: number) => {
+        if (!window.confirm('Are you sure you want to delete this client?')) return;
+        try {
+            await clientsApi.delete(id);
+            toast.success('Client deleted successfully');
+            loadClients();
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to delete client');
+        }
+    };
+
+    const handleEdit = (client: Client) => {
+        setSelectedClient(client);
+        setShowModal(true);
+    };
+
     const filteredClients = clients.filter((client) =>
         client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         client.company?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -39,7 +58,13 @@ export const Clients = () => {
                     <h1 className="text-2xl font-bold text-gray-900">Clients</h1>
                     <p className="text-gray-600 mt-1">Manage your clients</p>
                 </div>
-                <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                <button
+                    onClick={() => {
+                        setSelectedClient(null);
+                        setShowModal(true);
+                    }}
+                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
+                >
                     <Plus className="w-5 h-5" />
                     New Client
                 </button>
@@ -73,8 +98,23 @@ export const Clients = () => {
                     {filteredClients.map((client) => (
                         <div
                             key={client.id}
-                            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow relative group"
                         >
+                            <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    onClick={() => handleEdit(client)}
+                                    className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                                >
+                                    <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(client.id)}
+                                    className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+
                             <div className="flex items-start gap-4 mb-4">
                                 {client.logo ? (
                                     <img
@@ -88,7 +128,7 @@ export const Clients = () => {
                                     </div>
                                 )}
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="font-semibold text-gray-900 truncate">{client.name}</h3>
+                                    <h3 className="font-semibold text-gray-900 truncate pr-16">{client.name}</h3>
                                     {client.company && (
                                         <p className="text-sm text-gray-600 truncate">{client.company}</p>
                                     )}
@@ -118,6 +158,17 @@ export const Clients = () => {
                         </div>
                     ))}
                 </div>
+            )}
+
+            {showModal && (
+                <ClientFormModal
+                    client={selectedClient}
+                    onClose={() => setShowModal(false)}
+                    onSuccess={() => {
+                        setShowModal(false);
+                        loadClients();
+                    }}
+                />
             )}
         </div>
     );

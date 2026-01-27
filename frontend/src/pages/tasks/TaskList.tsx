@@ -102,16 +102,20 @@ export const TaskList = ({ tasks }: TaskListProps) => {
                                     </span>
                                 </td>
                                 <td className="px-6 py-4">
-                                    {task.assignee && (
+                                    {(task.assignee || task.assigned_to_name) && (
                                         <div className="flex items-center gap-2">
                                             <div className="w-8 h-8 rounded-full overflow-hidden bg-blue-500 text-white flex items-center justify-center text-xs font-medium">
-                                                {task.assignee.profile_picture ? (
-                                                    <img src={`${BASE_URL}/${task.assignee.profile_picture}`} alt={task.assignee.name} className="w-full h-full object-cover" />
+                                                {task.assignee?.profile_picture || task.artist_profile ? (
+                                                    <img
+                                                        src={`${BASE_URL}/${task.assignee?.profile_picture || task.artist_profile}`}
+                                                        alt={task.assignee?.name || task.assigned_to_name}
+                                                        className="w-full h-full object-cover"
+                                                    />
                                                 ) : (
-                                                    task.assignee.name.charAt(0).toUpperCase()
+                                                    (task.assignee?.name || task.assigned_to_name || 'U').charAt(0).toUpperCase()
                                                 )}
                                             </div>
-                                            <span className="text-sm text-gray-900">{task.assignee.name}</span>
+                                            <span className="text-sm text-gray-900">{task.assignee?.name || task.assigned_to_name}</span>
                                         </div>
                                     )}
                                 </td>

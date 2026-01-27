@@ -8,15 +8,19 @@ import type { Task } from '../../types/task.types';
 import type { Comment } from '../../types/comment.types';
 import { format } from 'date-fns';
 import { BASE_URL } from '../../api/axios';
+import { TaskFormModal } from '../../components/tasks/TaskFormModal';
+import { useAuthStore } from '../../store/authStore';
 
 export const TaskDetail = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { user } = useAuthStore();
     const [task, setTask] = useState<Task | null>(null);
     const [comments, setComments] = useState<Comment[]>([]);
     const [newComment, setNewComment] = useState('');
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     useEffect(() => {
         if (id) {
@@ -34,10 +38,23 @@ export const TaskDetail = () => {
             setTask(taskRes.data ?? null);
             setComments(commentsRes.data ?? []);
         } catch (error) {
+            console.error('Error loading task detail:', error);
             toast.error('Failed to load task details');
             navigate('/tasks');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!task || !window.confirm('Are you sure you want to delete this task?')) return;
+
+        try {
+            await tasksApi.delete(task.id);
+            toast.success('Task deleted successfully');
+            navigate('/tasks');
+        } catch (error) {
+            toast.error('Failed to delete task');
         }
     };
 
@@ -75,6 +92,7 @@ export const TaskDetail = () => {
         const colors: Record<string, string> = {
             todo: 'bg-gray-100 text-gray-800',
             working: 'bg-blue-100 text-blue-800',
+            finished: 'bg-indigo-100 text-indigo-800',
             need_update: 'bg-yellow-100 text-yellow-800',
             under_review: 'bg-purple-100 text-purple-800',
             approved: 'bg-green-100 text-green-800',
@@ -122,18 +140,26 @@ export const TaskDetail = () => {
                                 </div>
                             </div>
                             <div className="flex gap-2">
-                                <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg">
+                                <button
+                                    onClick={() => setIsEditModalOpen(true)}
+                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                >
                                     <Edit className="w-5 h-5" />
                                 </button>
-                                <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
-                                    <Trash2 className="w-5 h-5" />
-                                </button>
+                                {user?.role !== 'artist' && (
+                                    <button
+                                        onClick={handleDelete}
+                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    >
+                                        <Trash2 className="w-5 h-5" />
+                                    </button>
+                                )}
                             </div>
                         </div>
 
                         {task.description && (
                             <div className="prose max-w-none">
-                                <p className="text-gray-700">{task.description}</p>
+                                <p className="text-gray-700 whitespace-pre-wrap">{task.description}</p>
                             </div>
                         )}
                     </div>
@@ -149,15 +175,15 @@ export const TaskDetail = () => {
                             {comments.map((comment) => (
                                 <div key={comment.id} className="flex gap-3">
                                     <div className="w-8 h-8 rounded-full overflow-hidden bg-blue-500 text-white flex items-center justify-center font-medium flex-shrink-0">
-                                        {comment.user?.profile_picture ? (
-                                            <img src={`${BASE_URL}/${comment.user.profile_picture}`} alt={comment.user.name} className="w-full h-full object-cover" />
+                                        {comment.profile_picture ? (
+                                            <img src={`${BASE_URL}/${comment.profile_picture}`} alt={comment.user_name} className="w-full h-full object-cover" />
                                         ) : (
-                                            comment.user?.name.charAt(0).toUpperCase()
+                                            (comment.user_name || 'U').charAt(0).toUpperCase()
                                         )}
                                     </div>
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <span className="font-medium text-gray-900">{comment.user?.name}</span>
+                                            <span className="font-medium text-gray-900">{comment.user_name}</span>
                                             <span className="text-xs text-gray-500">
                                                 {format(new Date(comment.created_at), 'MMM dd, yyyy HH:mm')}
                                             </span>
@@ -179,7 +205,7 @@ export const TaskDetail = () => {
                             <button
                                 type="submit"
                                 disabled={submitting || !newComment.trim()}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 cursor-pointer"
                             >
                                 <Send className="w-5 h-5" />
                             </button>
@@ -192,15 +218,15 @@ export const TaskDetail = () => {
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
                         <div>
                             <p className="text-sm text-gray-600 mb-1">Assigned To</p>
-                            <p className="font-medium text-gray-900">{task.assignee?.name}</p>
+                            <p className="font-medium text-gray-900">{task.assigned_to_name}</p>
                         </div>
                         <div>
                             <p className="text-sm text-gray-600 mb-1">Assigned By</p>
-                            <p className="font-medium text-gray-900">{task.assigner?.name}</p>
+                            <p className="font-medium text-gray-900">{task.assigned_by_name}</p>
                         </div>
                         <div>
                             <p className="text-sm text-gray-600 mb-1">Project</p>
-                            <p className="font-medium text-gray-900">{task.project?.name}</p>
+                            <p className="font-medium text-gray-900">{task.project_name || task.project?.name}</p>
                         </div>
                         {task.deadline && (
                             <div>
@@ -219,6 +245,17 @@ export const TaskDetail = () => {
                     </div>
                 </div>
             </div>
+
+            {isEditModalOpen && (
+                <TaskFormModal
+                    task={task}
+                    onClose={() => setIsEditModalOpen(false)}
+                    onSuccess={() => {
+                        setIsEditModalOpen(false);
+                        loadTaskDetail();
+                    }}
+                />
+            )}
         </div>
     );
 };

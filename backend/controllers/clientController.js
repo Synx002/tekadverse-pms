@@ -48,7 +48,7 @@ exports.getClientById = async (req, res) => {
         );
 
         if (clients.length === 0) {
-            return res.status(404).json({ message: 'Client not found' });
+            return res.status(404).json({ success: false, message: 'Client not found' });
         }
 
         // Get projects count
@@ -76,7 +76,7 @@ exports.createClient = async (req, res) => {
         const { name, email, phone, company, address, description } = req.body;
 
         if (!name) {
-            return res.status(400).json({ message: 'Client name is required' });
+            return res.status(400).json({ success: false, message: 'Client name is required' });
         }
 
         const logo = req.file ? req.file.path.replace(/\\/g, '/') : null;
@@ -90,12 +90,13 @@ exports.createClient = async (req, res) => {
         await logActivity(req.user.id, 'created_client', 'client', result.insertId, null, { name, company }, req.ip);
 
         res.status(201).json({
+            success: true,
             message: 'Client created successfully',
-            clientId: result.insertId
+            data: { id: result.insertId }
         });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 
@@ -107,7 +108,7 @@ exports.updateClient = async (req, res) => {
 
         const [existing] = await db.execute('SELECT * FROM clients WHERE id = ?', [id]);
         if (existing.length === 0) {
-            return res.status(404).json({ message: 'Client not found' });
+            return res.status(404).json({ success: false, message: 'Client not found' });
         }
 
         const logo = req.file ? req.file.path.replace(/\\/g, '/') : existing[0].logo;
@@ -115,15 +116,15 @@ exports.updateClient = async (req, res) => {
         await db.execute(
             `UPDATE clients SET name = ?, email = ?, phone = ?, company = ?, logo = ?, 
        address = ?, description = ?, is_active = ? WHERE id = ?`,
-            [name, email, phone, company, logo, address, description, is_active, id]
+            [name, email, phone, company, logo, address, description, is_active ?? 1, id]
         );
 
         await logActivity(req.user.id, 'updated_client', 'client', id, existing[0], { name, company }, req.ip);
 
-        res.json({ message: 'Client updated successfully' });
+        res.json({ success: true, message: 'Client updated successfully' });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 
@@ -134,17 +135,26 @@ exports.deleteClient = async (req, res) => {
 
         const [existing] = await db.execute('SELECT * FROM clients WHERE id = ?', [id]);
         if (existing.length === 0) {
-            return res.status(404).json({ message: 'Client not found' });
+            return res.status(404).json({ success: false, message: 'Client not found' });
         }
 
         await db.execute('DELETE FROM clients WHERE id = ?', [id]);
 
         await logActivity(req.user.id, 'deleted_client', 'client', id, existing[0], null, req.ip);
 
-        res.json({ message: 'Client deleted successfully' });
+        res.json({ success: true, message: 'Client deleted successfully' });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+
+        // Handle Foreign Key Constraint error
+        if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot delete client because they have associated projects. Try deactivating them instead.'
+            });
+        }
+
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 

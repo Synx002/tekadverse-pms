@@ -58,9 +58,9 @@ export const Dashboard = () => {
                 totalProjects: projects.length,
                 activeProjects: projects.filter(p => p.status === 'active').length,
                 totalTasks: tasks.length,
-                completedTasks: tasks.filter(t => t.status === 'done').length,
+                completedTasks: tasks.filter(t => t.status === 'done' || t.status === 'approved').length,
                 myTasks: tasks.filter(t => t.assigned_to === user?.id).length,
-                urgentTasks: tasks.filter(t => t.priority === 'urgent' && t.status !== 'done').length,
+                urgentTasks: tasks.filter(t => t.priority === 'urgent' && t.status !== 'done' && t.status !== 'approved').length,
             });
 
             // Get recent tasks assigned to current user
