@@ -108,9 +108,9 @@ export const ProjectDetail = () => {
 
             {/* Project Header */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex items-start justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
                     <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
+                        <div className="flex flex-wrap items-center gap-3 mb-2">
                             <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
                             <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(project.status)}`}>
                                 {project.status.replace('_', ' ')}

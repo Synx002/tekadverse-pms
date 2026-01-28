@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useUIStore } from '../../store/uiStore';
+import logo from '../../assets/logo.svg';
 
 export const Sidebar = () => {
     const user = useAuthStore((state) => state.user);
@@ -47,8 +48,12 @@ export const Sidebar = () => {
             >
                 <div className="h-full px-3 py-4 overflow-y-auto">
                     {/* Logo */}
-                    <div className="flex items-center justify-between mb-6 px-3">
-                        <h1 className="text-xl font-bold text-gray-800">Tekadverse PMS</h1>
+                    <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-200 pb-4">
+                        <div className="flex items-center gap-2">
+                            <img src={logo} alt="Logo" className="w-18 items-center" />
+                            <div className="w-px bg-gray-300 self-stretch"></div>
+                            <h1 className="text-sm font-medium text-gray-800">Project Management System</h1>
+                        </div>
                         <button
                             onClick={toggleSidebar}
                             className="lg:hidden p-1 rounded hover:bg-gray-100"
