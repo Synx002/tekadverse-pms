@@ -186,108 +186,81 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
                         return (
                             <div
                                 key={column.status}
-                                className={`flex-shrink-0 transition-all duration-300 ease-in-out ${isCollapsed ? 'w-16' : 'w-80'
-                                    }`}
+                                className="flex-shrink-0 w-80"
                                 onDragOver={handleDragOver}
                                 onDrop={(e) => handleDrop(e, column.status)}
                             >
                                 <div className={`${column.color} rounded-lg h-full flex flex-col overflow-hidden text-sm`}>
                                     {/* Desktop Header */}
-                                    <div className={`p-3 flex ${isCollapsed ? 'flex-col justify-center gap-4 py-4' : 'items-center justify-between'
-                                        } font-semibold text-gray-700 bg-opacity-50`}>
-                                        <div className={`flex items-center gap-2 ${isCollapsed ? 'flex-col-reverse' : ''}`}>
-                                            <button
-                                                onClick={() => toggleColumn(column.status)}
-                                                className="p-1 hover:bg-black/5 rounded-md transition-colors focus:outline-none"
-                                                title={isCollapsed ? "Expand column" : "Collapse column"}
-                                            >
-                                                {isCollapsed ? (
-                                                    <ChevronRight className="w-4 h-4" />
-                                                ) : (
-                                                    <ChevronLeft className="w-4 h-4" />
-                                                )}
-                                            </button>
-
-                                            {isCollapsed ? (
-                                                <div className="writing-vertical-rl transform rotate-180 whitespace-nowrap py-2 tracking-wide uppercase text-xs">
-                                                    {column.title}
-                                                </div>
-                                            ) : (
-                                                <span>{column.title}</span>
-                                            )}
+                                    <div className="p-3 flex items-center justify-between font-semibold text-gray-700 bg-opacity-50">
+                                        <div className="flex items-center gap-2">
+                                            <span>{column.title}</span>
                                         </div>
 
-                                        <span className={`bg-white/60 px-2 py-0.5 rounded-full text-xs font-bold ${isCollapsed ? 'mb-2' : ''
-                                            }`}>
+                                        <span className="bg-white/60 px-2 py-0.5 rounded-full text-xs font-bold">
                                             {columnTasks.length}
                                         </span>
                                     </div>
 
                                     {/* Desktop Content */}
-                                    {!isCollapsed && (
-                                        <div className="flex-1 p-3 overflow-y-auto min-h-[500px] space-y-3">
-                                            {columnTasks.map((task) => (
-                                                <div
-                                                    key={task.id}
-                                                    onClick={() => navigate(`/tasks/${task.id}`)}
-                                                    draggable={!(user?.role === 'artist' && ['need_update', 'under_review', 'approved', 'done'].includes(task.status))}
-                                                    onDragStart={(e) => handleDragStart(e, task.id)}
-                                                    className={`bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer border-l-4 ${getPriorityColor(task.priority)} ${draggedTaskId === task.id ? 'opacity-50' : ''
-                                                        } ${user?.role === 'artist' && ['need_update', 'under_review', 'approved', 'done'].includes(task.status)
-                                                            ? 'cursor-default hover:shadow-none bg-gray-50'
-                                                            : ''
-                                                        }`}
-                                                >
-                                                    <h4 className="font-medium text-gray-900 mb-2 border-b border-gray-200 pb-2">{task.project_name}</h4>
-                                                    <h4 className="font-regular text-gray-900 mb-2">{task.title}</h4>
-                                                    {task.description && (
-                                                        <p className="text-xs text-gray-500 mb-3 line-clamp-2">
-                                                            {task.description}
-                                                        </p>
+                                    <div className="flex-1 p-3 overflow-y-auto min-h-[500px] space-y-3">
+                                        {columnTasks.map((task) => (
+                                            <div
+                                                key={task.id}
+                                                onClick={() => navigate(`/tasks/${task.id}`)}
+                                                draggable={!(user?.role === 'artist' && ['need_update', 'under_review', 'approved', 'done'].includes(task.status))}
+                                                onDragStart={(e) => handleDragStart(e, task.id)}
+                                                className={`bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer border-l-4 ${getPriorityColor(task.priority)} ${draggedTaskId === task.id ? 'opacity-50' : ''
+                                                    } ${user?.role === 'artist' && ['need_update', 'under_review', 'approved', 'done'].includes(task.status)
+                                                        ? 'cursor-default hover:shadow-none bg-gray-50'
+                                                        : ''
+                                                    }`}
+                                            >
+                                                <h4 className="font-medium text-gray-900 mb-2 border-b border-gray-200 pb-2">{task.project_name}</h4>
+                                                <h4 className="font-regular text-gray-900 mb-2">{task.title}</h4>
+                                                {task.description && (
+                                                    <p className="text-xs text-gray-500 mb-3 line-clamp-2">
+                                                        {task.description}
+                                                    </p>
+                                                )}
+
+                                                <div className="space-y-2">
+                                                    {task.assignee && (
+                                                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                            <User className="w-3 h-3" />
+                                                            <span>{task.assignee.name}</span>
+                                                        </div>
                                                     )}
 
-                                                    <div className="space-y-2">
-                                                        {task.assignee && (
-                                                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                                <User className="w-3 h-3" />
-                                                                <span>{task.assignee.name}</span>
+                                                    <div className="flex items-center justify-between">
+                                                        {task.deadline && (
+                                                            <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                                                                <Calendar className="w-3 h-3" />
+                                                                <span>{format(new Date(task.deadline), 'MMM dd')}</span>
                                                             </div>
                                                         )}
 
-                                                        <div className="flex items-center justify-between">
-                                                            {task.deadline && (
-                                                                <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                                                                    <Calendar className="w-3 h-3" />
-                                                                    <span>{format(new Date(task.deadline), 'MMM dd')}</span>
-                                                                </div>
-                                                            )}
-
-                                                            <div className="flex items-center gap-2 ml-auto">
-                                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                                                                    {task.priority}
+                                                        <div className="flex items-center gap-2 ml-auto">
+                                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                                                {task.priority}
+                                                            </span>
+                                                            {task.comments_count !== undefined && task.comments_count > 0 && (
+                                                                <span className="text-xs text-gray-400 flex items-center gap-1">
+                                                                    <span>💬</span> {task.comments_count}
                                                                 </span>
-                                                                {task.comments_count !== undefined && task.comments_count > 0 && (
-                                                                    <span className="text-xs text-gray-400 flex items-center gap-1">
-                                                                        <span>💬</span> {task.comments_count}
-                                                                    </span>
-                                                                )}
-                                                            </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
-                                            ))}
+                                            </div>
+                                        ))}
 
-                                            {columnTasks.length === 0 && (
-                                                <div className="text-center text-gray-400 py-8">
-                                                    <p className="text-sm">No tasks</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {isCollapsed && (
-                                        <div className="bg-gray-50/50 flex-1 w-full"></div>
-                                    )}
+                                        {columnTasks.length === 0 && (
+                                            <div className="text-center text-gray-400 py-8">
+                                                <p className="text-sm">No tasks</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         );
