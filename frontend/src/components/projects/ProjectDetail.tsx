@@ -3,23 +3,25 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Edit, Trash2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { projectsApi } from '../../api/projects.api';
-import { tasksApi } from '../../api/tasks.api';
+import { pagesApi } from '../../api/pages.api';
 import { clientsApi } from '../../api/clients.api';
-import { TaskFormModal } from '../tasks/TaskFormModal';
+import { PageFormModal } from '../pages/PageFormModal';
 import { ProjectFormModal } from './ProjectFormModal';
 import type { Project } from '../../types/project.types';
-import type { Task } from '../../types/task.types';
+import type { Page } from '../../types/page.types';
 import type { Client } from '../../types/client.types';
 import { format } from 'date-fns';
+import { useAuthStore } from '../../store/authStore';
 
 export const ProjectDetail = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const user = useAuthStore((state) => state.user);
     const [project, setProject] = useState<Project | null>(null);
-    const [tasks, setTasks] = useState<Task[]>([]);
+    const [pages, setPages] = useState<Page[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showTaskModal, setShowTaskModal] = useState(false);
+    const [showPageModal, setShowPageModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
 
     useEffect(() => {
@@ -41,12 +43,12 @@ export const ProjectDetail = () => {
     const loadProjectDetail = async () => {
         try {
             setLoading(true);
-            const [projectRes, tasksRes] = await Promise.all([
+            const [projectRes, pagesRes] = await Promise.all([
                 projectsApi.getById(Number(id)),
-                tasksApi.getAll({ project_id: Number(id) }),
+                pagesApi.getAll({ project_id: Number(id) }),
             ]);
             setProject(projectRes.data ?? null);
-            setTasks(tasksRes.data ?? []);
+            setPages(pagesRes.data ?? []);
         } catch (error) {
             toast.error('Failed to load project details');
             navigate('/projects');
@@ -92,8 +94,9 @@ export const ProjectDetail = () => {
         return null;
     }
 
-    const completedTasks = tasks.filter(t => t.status === 'done' || t.status === 'approved').length;
-    const progress = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
+    const totalTasks = pages.reduce((sum, p) => sum + (p.tasks_count || 0), 0);
+    const completedTasksCount = pages.reduce((sum, p) => sum + (p.tasks_completed || 0), 0);
+    const progress = totalTasks > 0 ? (completedTasksCount / totalTasks) * 100 : 0;
 
     return (
         <div className="space-y-6">
@@ -121,18 +124,24 @@ export const ProjectDetail = () => {
                         )}
                     </div>
                     <div className="flex gap-2">
-                        <button
-                            onClick={() => setShowEditModal(true)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                        >
-                            <Edit className="w-5 h-5" />
-                        </button>
-                        <button
-                            onClick={handleDeleteProject}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                        >
-                            <Trash2 className="w-5 h-5" />
-                        </button>
+                        {(user?.role === 'admin' || user?.role === 'manager') && (
+                            <>
+                                <button
+                                    onClick={() => setShowEditModal(true)}
+                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                                >
+                                    <Edit className="w-5 h-5" />
+                                </button>
+                                {user?.role === 'admin' && (
+                                    <button
+                                        onClick={handleDeleteProject}
+                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                    >
+                                        <Trash2 className="w-5 h-5" />
+                                    </button>
+                                )}
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -140,18 +149,6 @@ export const ProjectDetail = () => {
                     <div>
                         <p className="text-sm text-gray-600">Client</p>
                         <p className="font-medium text-gray-900">{project.client_name || project.client?.name || 'N/A'}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-600">Start Date</p>
-                        <p className="font-medium text-gray-900">
-                            {project.start_date ? format(new Date(project.start_date), 'MMM dd, yyyy') : 'N/A'}
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-600">End Date</p>
-                        <p className="font-medium text-gray-900">
-                            {project.end_date ? format(new Date(project.end_date), 'MMM dd, yyyy') : 'N/A'}
-                        </p>
                     </div>
                 </div>
 
@@ -168,53 +165,53 @@ export const ProjectDetail = () => {
                         />
                     </div>
                     <p className="text-sm text-gray-600 mt-1">
-                        {completedTasks} of {tasks.length} tasks completed
+                        {completedTasksCount} of {totalTasks} tasks completed across all pages
                     </p>
                 </div>
             </div>
 
-            {/* Tasks Section */}
+            {/* Pages Section */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200">
                 <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-gray-900">Tasks</h2>
-                    <button
-                        onClick={() => setShowTaskModal(true)}
-                        className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
-                    >
-                        <Plus className="w-5 h-5" />
-                        Add Task
-                    </button>
+                    <h2 className="text-lg font-semibold text-gray-900">Pages</h2>
+                    {(user?.role === 'admin' || user?.role === 'manager') && (
+                        <button
+                            onClick={() => setShowPageModal(true)}
+                            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
+                        >
+                            <Plus className="w-5 h-5" />
+                            Add Page
+                        </button>
+                    )}
                 </div>
 
                 <div className="divide-y divide-gray-200">
-                    {tasks.length === 0 ? (
+                    {pages.length === 0 ? (
                         <div className="p-8 text-center text-gray-500">
-                            <p>No tasks yet</p>
+                            <p>No pages yet</p>
                         </div>
                     ) : (
-                        tasks.map((task) => (
+                        pages.map((page) => (
                             <div
-                                key={task.id}
-                                onClick={() => navigate(`/tasks/${task.id}`)}
+                                key={page.id}
+                                onClick={() => navigate(`/pages/${page.id}`)}
                                 className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
                             >
                                 <div className="flex items-center justify-between mb-2">
-                                    <h3 className="font-medium text-gray-900">{task.title}</h3>
-                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getStatusColor(task.status)} uppercase tracking-wider`}>
-                                        {task.status.replace('_', ' ')}
+                                    <h3 className="font-medium text-gray-900">{page.name}</h3>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getStatusColor(page.status)} uppercase tracking-wider`}>
+                                        {page.status.replace('_', ' ')}
                                     </span>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-4 text-xs">
                                     <div className="flex items-center gap-1.5 text-gray-600">
-                                        <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-[10px] text-blue-700 font-bold uppercase">
-                                            {task.assigned_to_name ? task.assigned_to_name.charAt(0) : 'U'}
-                                        </div>
-                                        <span>{task.assigned_to_name || 'Unassigned'}</span>
+                                        <span className="font-medium">{page.tasks_count || 0} Tasks</span>
+                                        <span className="text-gray-400">({page.tasks_completed || 0} done)</span>
                                     </div>
-                                    {task.deadline && (
+                                    {page.end_date && (
                                         <div className="flex items-center gap-1.5 text-gray-600">
-                                            <span className="text-gray-400">Deadline:</span>
-                                            <span className="font-medium">{format(new Date(task.deadline), 'MMM dd, yyyy')}</span>
+                                            <span className="text-gray-400">End Date:</span>
+                                            <span className="font-medium">{format(new Date(page.end_date), 'MMM dd, yyyy')}</span>
                                         </div>
                                     )}
                                 </div>
@@ -224,12 +221,12 @@ export const ProjectDetail = () => {
                 </div>
             </div>
 
-            {showTaskModal && (
-                <TaskFormModal
+            {showPageModal && (
+                <PageFormModal
                     projectId={Number(id)}
-                    onClose={() => setShowTaskModal(false)}
+                    onClose={() => setShowPageModal(false)}
                     onSuccess={() => {
-                        setShowTaskModal(false);
+                        setShowPageModal(false);
                         loadProjectDetail();
                     }}
                 />

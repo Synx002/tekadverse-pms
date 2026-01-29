@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter } from 'react-router-dom';
 import { Layout } from '../components/layout/Layout';
 import { ProtectedRoute } from './ProtectedRoute';
 
@@ -10,6 +10,7 @@ import { Register } from '../pages/auth/Register';
 import { Dashboard } from '../pages/dashboard';
 import { Projects } from '../components/projects/Projects';
 import { ProjectDetail } from '../components/projects/ProjectDetail';
+import { PageDetail } from '../components/pages/PageDetail';
 import { Tasks } from '../pages/tasks/Tasks';
 import { TaskDetail } from '../pages/tasks/TaskDetail';
 import { Clients } from '../pages/clients/Clients';
@@ -44,6 +45,10 @@ export const router = createBrowserRouter([
             {
                 path: 'projects/:id',
                 element: <ProjectDetail />,
+            },
+            {
+                path: 'pages/:id',
+                element: <PageDetail />,
             },
             {
                 path: 'tasks',

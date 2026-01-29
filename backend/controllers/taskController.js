@@ -5,22 +5,22 @@ const { sendEmail, emailTemplates } = require('../utils/emailService');
 // Get all tasks (with filters)
 exports.getAllTasks = async (req, res) => {
     try {
-        const { project_id, assigned_to, status, priority, search } = req.query;
+        const { page_id, assigned_to, status, priority, search } = req.query;
 
         // Role-based visibility logic
         let filterAssignedTo = assigned_to;
         if (req.user.role === 'artist') {
-            if (project_id) {
-                // If filtering by project, check if artist belongs to that project
+            if (page_id) {
+                // If filtering by page, check if artist belongs to that page
                 const [access] = await db.execute(
-                    'SELECT 1 FROM tasks WHERE project_id = ? AND assigned_to = ? LIMIT 1',
-                    [project_id, req.user.id]
+                    'SELECT 1 FROM tasks WHERE page_id = ? AND assigned_to = ? LIMIT 1',
+                    [page_id, req.user.id]
                 );
                 if (access.length === 0) {
-                    return res.status(403).json({ success: false, message: 'Access denied to this project' });
+                    return res.status(403).json({ success: false, message: 'Access denied to this page' });
                 }
                 // If they have access, we don't force assigned_to filter
-                // They can see everyone's tasks in this project
+                // They can see everyone's tasks in this page
             } else {
                 // Global view: artists only see their own tasks
                 filterAssignedTo = req.user.id;
@@ -29,6 +29,7 @@ exports.getAllTasks = async (req, res) => {
 
         let query = `
       SELECT t.*, 
+             pg.name as page_name,
              p.name as project_name,
              c.name as client_name,
              artist.name as assigned_to_name,
@@ -36,7 +37,8 @@ exports.getAllTasks = async (req, res) => {
              artist.profile_picture as artist_profile,
              manager.name as assigned_by_name
       FROM tasks t
-      LEFT JOIN projects p ON t.project_id = p.id
+      LEFT JOIN pages pg ON t.page_id = pg.id
+      LEFT JOIN projects p ON pg.project_id = p.id
       LEFT JOIN clients c ON p.client_id = c.id
       LEFT JOIN users artist ON t.assigned_to = artist.id
       LEFT JOIN users manager ON t.assigned_by = manager.id
@@ -44,9 +46,9 @@ exports.getAllTasks = async (req, res) => {
     `;
         const params = [];
 
-        if (project_id) {
-            query += ' AND t.project_id = ?';
-            params.push(project_id);
+        if (page_id) {
+            query += ' AND t.page_id = ?';
+            params.push(page_id);
         }
 
         if (filterAssignedTo) {
@@ -119,13 +121,15 @@ exports.getTaskById = async (req, res) => {
 
         const [tasks] = await db.execute(
             `SELECT t.*, 
+              pg.name as page_name,
               p.name as project_name,
               c.name as client_name,
               artist.name as assigned_to_name,
               artist.email as assigned_to_email,
               manager.name as assigned_by_name
        FROM tasks t
-       LEFT JOIN projects p ON t.project_id = p.id
+       LEFT JOIN pages pg ON t.page_id = pg.id
+       LEFT JOIN projects p ON pg.project_id = p.id
        LEFT JOIN clients c ON p.client_id = c.id
        LEFT JOIN users artist ON t.assigned_to = artist.id
        LEFT JOIN users manager ON t.assigned_by = manager.id
@@ -163,21 +167,21 @@ exports.getTaskById = async (req, res) => {
 // Create task
 exports.createTask = async (req, res) => {
     try {
-        const { project_id, title, description, assigned_to, priority, deadline } = req.body;
+        const { page_id, title, description, assigned_to, priority, deadline } = req.body;
 
-        if (!project_id || !title || !assigned_to) {
-            return res.status(400).json({ success: false, message: 'Project, title, and assigned artist are required' });
+        if (!page_id || !title || !assigned_to) {
+            return res.status(400).json({ success: false, message: 'Page, title, and assigned artist are required' });
         }
 
         const [result] = await db.execute(
-            `INSERT INTO tasks (project_id, title, description, assigned_to, assigned_by, priority, deadline)
+            `INSERT INTO tasks (page_id, title, description, assigned_to, assigned_by, priority, deadline)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [project_id, title, description, assigned_to, req.user.id, priority || 'medium', deadline]
+            [page_id, title, description, assigned_to, req.user.id, priority || 'medium', deadline]
         );
 
-        // Get artist and project details for notification
+        // Get artist and Page details for notification
         const [artist] = await db.execute('SELECT name, email FROM users WHERE id = ?', [assigned_to]);
-        const [project] = await db.execute('SELECT name FROM projects WHERE id = ?', [project_id]);
+        const [page] = await db.execute('SELECT name FROM pages WHERE id = ?', [page_id]);
 
         // Create notification
         await db.execute(
@@ -194,11 +198,11 @@ exports.createTask = async (req, res) => {
         );
 
         // Send email
-        if (artist.length > 0 && project.length > 0) {
+        if (artist.length > 0 && page.length > 0) {
             const emailHtml = emailTemplates.taskAssigned(
                 artist[0].name,
                 title,
-                project[0].name,
+                page[0].name,
                 deadline || 'Not set'
             );
             await sendEmail(artist[0].email, 'New Task Assigned - Tekadverse PMS', emailHtml);
@@ -212,7 +216,7 @@ exports.createTask = async (req, res) => {
             data: {
                 id: result.insertId,
                 title,
-                project_id,
+                page_id,
                 assigned_to
             }
         });

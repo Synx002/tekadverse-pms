@@ -3,7 +3,7 @@ import type { Task, CreateTaskData, UpdateTaskData } from '../types/task.types';
 import type { ApiResponse } from '../types/api.types';
 
 export const tasksApi = {
-    getAll: async (filters?: { project_id?: number; assigned_to?: number; status?: string }) => {
+    getAll: async (filters?: { page_id?: number; assigned_to?: number; status?: string }) => {
         const { data } = await api.get<ApiResponse<Task[]>>('/tasks', { params: filters });
         return data;
     },

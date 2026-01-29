@@ -1,4 +1,5 @@
 import type { Project } from "./project.types";
+import type { Page } from "./page.types";
 import type { User } from "./user.types";
 
 export type TaskStatus = 'todo' | 'working' | 'finished' | 'need_update' | 'under_review' | 'approved' | 'done' | 'dropped';
@@ -6,7 +7,7 @@ export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
 export interface Task {
     id: number;
-    project_id: number;
+    page_id: number;
     title: string;
     description: string | null;
     assigned_to: number;
@@ -19,6 +20,7 @@ export interface Task {
     created_at: string;
     updated_at: string;
     project?: Project;
+    page?: Page;
     assignee?: User;
     assigner?: User;
     assigned_to_name?: string;
@@ -26,12 +28,13 @@ export interface Task {
     artist_profile?: string;
     assigned_by_name?: string;
     project_name?: string;
+    page_name?: string;
     client_name?: string;
     comments_count?: number;
 }
 
 export interface CreateTaskData {
-    project_id: number;
+    page_id: number;
     title: string;
     description?: string;
     assigned_to: number;
