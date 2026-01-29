@@ -19,6 +19,11 @@ exports.getAllProjects = async (req, res) => {
     `;
         const params = [];
 
+        if (req.user.role === 'artist') {
+            query += ' AND EXISTS (SELECT 1 FROM tasks t2 WHERE t2.project_id = p.id AND t2.assigned_to = ?)';
+            params.push(req.user.id);
+        }
+
         if (client_id) {
             query += ' AND p.client_id = ?';
             params.push(client_id);
@@ -63,15 +68,28 @@ exports.getProjectById = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Project not found' });
         }
 
+        // Check permission for artist
+        if (req.user.role === 'artist') {
+            const [hasAccess] = await db.execute(
+                'SELECT 1 FROM tasks WHERE project_id = ? AND assigned_to = ? LIMIT 1',
+                [id, req.user.id]
+            );
+            if (hasAccess.length === 0) {
+                return res.status(403).json({ success: false, message: 'Access denied to this project' });
+            }
+        }
+
         // Get tasks
-        const [tasks] = await db.execute(
-            `SELECT t.*, u.name as assigned_to_name, u.profile_picture
-       FROM tasks t
-       LEFT JOIN users u ON t.assigned_to = u.id
-       WHERE t.project_id = ?
-       ORDER BY t.created_at DESC`,
-            [id]
-        );
+        let tasksQuery = `
+            SELECT t.*, u.name as assigned_to_name, u.profile_picture
+            FROM tasks t
+            LEFT JOIN users u ON t.assigned_to = u.id
+            WHERE t.project_id = ?
+            ORDER BY t.created_at DESC
+        `;
+        const tasksParams = [id];
+
+        const [tasks] = await db.execute(tasksQuery, tasksParams);
 
         res.json({
             success: true,
