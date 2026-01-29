@@ -84,9 +84,9 @@ export const TaskList = ({ tasks }: TaskListProps) => {
                                                 {task.description}
                                             </p>
                                         )}
-                                        {task.project && (
+                                        {(task.project?.name || task.project_name) && (
                                             <p className="text-xs text-gray-400 mt-1">
-                                                {task.project.name}
+                                                {task.project?.name || task.project_name}
                                             </p>
                                         )}
                                     </div>
