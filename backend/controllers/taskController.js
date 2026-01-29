@@ -7,10 +7,24 @@ exports.getAllTasks = async (req, res) => {
     try {
         const { project_id, assigned_to, status, priority, search } = req.query;
 
-        // Force artist to only see their own tasks
+        // Role-based visibility logic
         let filterAssignedTo = assigned_to;
         if (req.user.role === 'artist') {
-            filterAssignedTo = req.user.id;
+            if (project_id) {
+                // If filtering by project, check if artist belongs to that project
+                const [access] = await db.execute(
+                    'SELECT 1 FROM tasks WHERE project_id = ? AND assigned_to = ? LIMIT 1',
+                    [project_id, req.user.id]
+                );
+                if (access.length === 0) {
+                    return res.status(403).json({ success: false, message: 'Access denied to this project' });
+                }
+                // If they have access, we don't force assigned_to filter
+                // They can see everyone's tasks in this project
+            } else {
+                // Global view: artists only see their own tasks
+                filterAssignedTo = req.user.id;
+            }
         }
 
         let query = `

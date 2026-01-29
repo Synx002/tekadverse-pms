@@ -122,7 +122,7 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
                                                 onClick={() => navigate(`/tasks/${task.id}`)}
                                                 className={`bg-white rounded-lg p-4 shadow-sm active:shadow-md transition-shadow cursor-pointer border-l-4 ${getPriorityColor(task.priority)}`}
                                             >
-                                                <h4 className="font-medium text-gray-900 mb-2 border-b border-gray-200 pb-2">{task.project_name}</h4>
+                                                <h4 className="font-medium text-gray-900 mb-2 border-b border-gray-200 pb-2">{task.project?.name || task.project_name}</h4>
                                                 <h4 className="font-regular text-gray-900 mb-2 text-base">{task.title}</h4>
 
 
@@ -181,7 +181,6 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
                 <div className="inline-flex gap-4 min-w-full h-full min-h-[600px]">
                     {columns.map((column) => {
                         const columnTasks = getTasksByStatus(column.status);
-                        const isCollapsed = collapsedStatuses.includes(column.status);
 
                         return (
                             <div
@@ -216,7 +215,7 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
                                                         : ''
                                                     }`}
                                             >
-                                                <h4 className="font-medium text-gray-900 mb-2 border-b border-gray-200 pb-2">{task.project_name}</h4>
+                                                <h4 className="font-medium text-gray-900 mb-2 border-b border-gray-200 pb-2">{task.project?.name || task.project_name}</h4>
                                                 <h4 className="font-regular text-gray-900 mb-2">{task.title}</h4>
                                                 {task.description && (
                                                     <p className="text-xs text-gray-500 mb-3 line-clamp-2">
