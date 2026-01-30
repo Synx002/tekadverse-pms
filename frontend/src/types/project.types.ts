@@ -7,7 +7,6 @@ export interface Project {
     id: number;
     client_id: number;
     name: string;
-    description: string | null;
     status: ProjectStatus;
     created_by: number;
     created_at: string;
@@ -21,6 +20,5 @@ export interface Project {
 export interface CreateProjectData {
     client_id: number;
     name: string;
-    description?: string;
-    status?: ProjectStatus;
+    status: ProjectStatus;
 }
