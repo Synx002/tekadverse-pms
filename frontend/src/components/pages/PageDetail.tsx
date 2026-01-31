@@ -9,10 +9,12 @@ import { PageFormModal } from './PageFormModal';
 import type { Page } from '../../types/page.types';
 import type { Task } from '../../types/task.types';
 import { format } from 'date-fns';
+import { useAuthStore } from '../../store/authStore';
 
 export const PageDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const user = useAuthStore((state) => state.user);
     const [page, setPage] = useState<Page | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
@@ -59,15 +61,7 @@ export const PageDetail: React.FC = () => {
         }
     };
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'completed': return 'bg-green-100 text-green-700';
-            case 'active': return 'bg-blue-100 text-blue-700';
-            case 'on_hold': return 'bg-yellow-100 text-yellow-700';
-            case 'planning': return 'bg-gray-100 text-gray-700';
-            default: return 'bg-gray-100 text-gray-700';
-        }
-    };
+
 
     if (loading) {
         return (
@@ -97,46 +91,45 @@ export const PageDetail: React.FC = () => {
                     <div>
                         <div className="flex items-center gap-2 mb-1">
                             <h1 className="text-2xl font-bold text-gray-900">{page.name}</h1>
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getStatusColor(page.status)} uppercase`}>
-                                {page.status.replace('_', ' ')}
-                            </span>
                         </div>
                         <p className="text-sm text-gray-500">Project: {page.project_name}</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => setShowEditModal(true)}
-                        className="p-2 text-gray-600 hover:bg-white rounded-lg transition-colors cursor-pointer border border-transparent hover:border-gray-200"
-                    >
-                        <Edit className="w-5 h-5" />
-                    </button>
-                    <button
-                        onClick={handleDelete}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-red-200"
-                    >
-                        <Trash2 className="w-5 h-5" />
-                    </button>
-                </div>
+                {(user?.role === 'admin' || user?.role === 'manager') && (
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setShowEditModal(true)}
+                            className="p-2 text-gray-600 hover:bg-white rounded-lg transition-colors cursor-pointer border border-transparent hover:border-gray-200"
+                        >
+                            <Edit className="w-5 h-5" />
+                        </button>
+                        <button
+                            onClick={handleDelete}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-red-200"
+                        >
+                            <Trash2 className="w-5 h-5" />
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-2 space-y-6">
-                    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                        <h2 className="text-sm font-semibold text-gray-900 mb-4 uppercase tracking-wider">Description</h2>
-                        <p className="text-gray-600 whitespace-pre-wrap">{page.description || 'No description provided.'}</p>
-                    </div>
+
 
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                         <div className="p-6 border-b border-gray-200 flex items-center justify-between">
                             <h2 className="text-lg font-semibold text-gray-900">Tasks</h2>
-                            <button
-                                onClick={() => setShowTaskModal(true)}
-                                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
-                            >
-                                <Plus className="w-4 h-4" />
-                                <span className="text-sm">Add Task</span>
-                            </button>
+                            {(user?.role === 'admin' || user?.role === 'manager') && (
+                                <button
+                                    onClick={() => setShowTaskModal(true)}
+                                    disabled={!page.steps?.length || tasks.length >= (page.steps?.length ?? 0)}
+                                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    <span className="text-sm">Add Task</span>
+                                </button>
+                            )}
                         </div>
                         <div className="divide-y divide-gray-200">
                             {tasks.length === 0 ? (
@@ -153,9 +146,11 @@ export const PageDetail: React.FC = () => {
                                     >
                                         <div className="flex items-center justify-between mb-2">
                                             <h3 className="font-medium text-gray-900">{task.title}</h3>
-                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getStatusColor(task.status)} uppercase`}>
-                                                {task.status.replace('_', ' ')}
-                                            </span>
+                                            {(task.step_number != null || task.step_name) && (
+                                                <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-medium">
+                                                    Step {task.step_number ?? ''} {task.step_name ? `- ${task.step_name}` : ''}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
@@ -191,25 +186,26 @@ export const PageDetail: React.FC = () => {
                         </p>
                     </div>
 
-                    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                        <h2 className="text-sm font-semibold text-gray-900 mb-4 uppercase tracking-wider">Timeline</h2>
-                        <div className="space-y-4">
-                            <div>
-                                <p className="text-xs text-gray-500 mb-1 font-medium">START DATE</p>
-                                <div className="flex items-center gap-2 text-sm text-gray-700">
-                                    <Calendar className="w-4 h-4 text-gray-400" />
-                                    {page.start_date ? format(new Date(page.start_date), 'MMMM dd, yyyy') : 'No date set'}
-                                </div>
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-500 mb-1 font-medium">END DATE</p>
-                                <div className="flex items-center gap-2 text-sm text-gray-700">
-                                    <Calendar className="w-4 h-4 text-gray-400" />
-                                    {page.end_date ? format(new Date(page.end_date), 'MMMM dd, yyyy') : 'No date set'}
-                                </div>
+                    {/* Steps Section */}
+                    {page.steps && page.steps.length > 0 && (
+                        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                            <h2 className="text-sm font-semibold text-gray-900 mb-4 uppercase tracking-wider">Steps</h2>
+                            <div className="space-y-2">
+                                {page.steps.map((step) => (
+                                    <div
+                                        key={step.id}
+                                        className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg"
+                                    >
+                                        <div className="flex items-center justify-center w-6 h-6 bg-blue-600 text-white text-xs font-bold rounded-full">
+                                            {step.step_number}
+                                        </div>
+                                        <span className="text-sm text-gray-700">{step.step_name}</span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                    </div>
+                    )}
+
                 </div>
             </div>
 

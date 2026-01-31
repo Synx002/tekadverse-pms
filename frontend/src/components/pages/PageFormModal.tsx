@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { pagesApi } from '../../api/pages.api';
-import type { Page, CreatePageData } from '../../types/page.types';
+import type { Page, CreatePageData, PageStep } from '../../types/page.types';
 
 interface PageFormModalProps {
     projectId: number;
@@ -15,22 +15,60 @@ export const PageFormModal: React.FC<PageFormModalProps> = ({ projectId, page, o
     const [formData, setFormData] = useState<CreatePageData>({
         project_id: projectId,
         name: page?.name || '',
-        description: page?.description || '',
-        status: page?.status || 'active',
-        start_date: page?.start_date ? new Date(page.start_date).toISOString().split('T')[0] : '',
-        end_date: page?.end_date ? new Date(page.end_date).toISOString().split('T')[0] : '',
+        steps: page?.steps || [],
     });
+    const [stepCount, setStepCount] = useState<number>(page?.steps?.length || 0);
+    const [stepNames, setStepNames] = useState<string[]>(
+        page?.steps?.map(s => s.step_name) || []
+    );
     const [loading, setLoading] = useState(false);
+
+    const handleStepCountChange = (count: number) => {
+        setStepCount(count);
+        // Initialize step names array with empty strings
+        const newStepNames = Array(count).fill('').map((_, i) => stepNames[i] || '');
+        setStepNames(newStepNames);
+    };
+
+    const handleStepNameChange = (index: number, value: string) => {
+        const newStepNames = [...stepNames];
+        newStepNames[index] = value;
+        setStepNames(newStepNames);
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validate step names if step count > 0
+        if (stepCount > 0) {
+            const emptySteps = stepNames.some(name => !name.trim());
+            if (emptySteps) {
+                toast.error('Please fill in all step names');
+                return;
+            }
+        }
+
         try {
             setLoading(true);
+
+            // Prepare steps data
+            const steps: PageStep[] = stepCount > 0
+                ? stepNames.map((name, index) => ({
+                    step_number: index + 1,
+                    step_name: name.trim()
+                }))
+                : [];
+
+            const dataToSubmit = {
+                ...formData,
+                steps: steps.length > 0 ? steps : undefined
+            };
+
             if (page) {
-                await pagesApi.update(page.id, formData);
+                await pagesApi.update(page.id, dataToSubmit);
                 toast.success('Page updated successfully');
             } else {
-                await pagesApi.create(formData);
+                await pagesApi.create(dataToSubmit);
                 toast.success('Page created successfully');
             }
             onSuccess();
@@ -43,7 +81,7 @@ export const PageFormModal: React.FC<PageFormModalProps> = ({ projectId, page, o
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
                 <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                     <h2 className="text-xl font-bold text-gray-900">{page ? 'Edit Page' : 'New Page'}</h2>
                     <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
@@ -51,7 +89,7 @@ export const PageFormModal: React.FC<PageFormModalProps> = ({ projectId, page, o
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Page Name</label>
                         <input
@@ -65,49 +103,45 @@ export const PageFormModal: React.FC<PageFormModalProps> = ({ projectId, page, o
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                        <textarea
-                            value={formData.description || ''}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none"
-                            placeholder="What's this page about?"
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                            <input
-                                type="date"
-                                value={formData.start_date}
-                                onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                            <input
-                                type="date"
-                                value={formData.end_date}
-                                onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                            />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                        <select
-                            value={formData.status}
-                            onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Number of Steps (Optional)
+                        </label>
+                        <input
+                            type="number"
+                            min="0"
+                            max="20"
+                            value={stepCount}
+                            onChange={(e) => handleStepCountChange(parseInt(e.target.value) || 0)}
                             className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                        >
-                            <option value="planning">Planning</option>
-                            <option value="active">Active</option>
-                            <option value="on_hold">On Hold</option>
-                            <option value="completed">Completed</option>
-                        </select>
+                            placeholder="e.g. 3"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                            Steps serve as a reference/guide for task creation
+                        </p>
                     </div>
+
+                    {stepCount > 0 && (
+                        <div className="space-y-3 pt-2">
+                            <label className="block text-sm font-medium text-gray-700">
+                                Step Names
+                            </label>
+                            {Array.from({ length: stepCount }).map((_, index) => (
+                                <div key={index}>
+                                    <label className="block text-xs text-gray-600 mb-1">
+                                        Step {index + 1}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={stepNames[index] || ''}
+                                        onChange={(e) => handleStepNameChange(index, e.target.value)}
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        placeholder={`e.g. ${index === 0 ? 'Sketch' : index === 1 ? 'Line Art' : 'Base Color'}`}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     <div className="flex gap-3 pt-4">
                         <button

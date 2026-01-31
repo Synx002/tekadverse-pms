@@ -8,6 +8,7 @@ export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export interface Task {
     id: number;
     page_id: number;
+    step_id: number | null;
     title: string;
     description: string | null;
     assigned_to: number;
@@ -31,10 +32,13 @@ export interface Task {
     page_name?: string;
     client_name?: string;
     comments_count?: number;
+    step_number?: number;
+    step_name?: string;
 }
 
 export interface CreateTaskData {
     page_id: number;
+    step_id: number;  // Required: each task must be assigned to a step
     title: string;
     description?: string;
     assigned_to: number;
@@ -43,6 +47,7 @@ export interface CreateTaskData {
 }
 
 export interface UpdateTaskData {
+    step_id?: number;
     title?: string;
     description?: string;
     assigned_to?: number;

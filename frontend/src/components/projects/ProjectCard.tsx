@@ -36,12 +36,7 @@ export const ProjectCard = ({ project, onClick }: ProjectCardProps) => {
                 {project.name}
             </h3>
 
-            {/* Description */}
-            {project.description && (
-                <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                    {project.description}
-                </p>
-            )}
+
 
             {/* Client Info */}
             {project.client && (

@@ -119,9 +119,7 @@ export const ProjectDetail = () => {
                                 {project.status.replace('_', ' ')}
                             </span>
                         </div>
-                        {project.description && (
-                            <p className="text-gray-600">{project.description}</p>
-                        )}
+
                     </div>
                     <div className="flex gap-2">
                         {(user?.role === 'admin' || user?.role === 'manager') && (
@@ -199,21 +197,14 @@ export const ProjectDetail = () => {
                             >
                                 <div className="flex items-center justify-between mb-2">
                                     <h3 className="font-medium text-gray-900">{page.name}</h3>
-                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getStatusColor(page.status)} uppercase tracking-wider`}>
-                                        {page.status.replace('_', ' ')}
-                                    </span>
+
                                 </div>
                                 <div className="flex flex-wrap items-center gap-4 text-xs">
                                     <div className="flex items-center gap-1.5 text-gray-600">
                                         <span className="font-medium">{page.tasks_count || 0} Tasks</span>
                                         <span className="text-gray-400">({page.tasks_completed || 0} done)</span>
                                     </div>
-                                    {page.end_date && (
-                                        <div className="flex items-center gap-1.5 text-gray-600">
-                                            <span className="text-gray-400">End Date:</span>
-                                            <span className="font-medium">{format(new Date(page.end_date), 'MMM dd, yyyy')}</span>
-                                        </div>
-                                    )}
+
                                 </div>
                             </div>
                         ))

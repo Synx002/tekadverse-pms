@@ -29,20 +29,59 @@ exports.getAllPages = async (req, res) => {
             params.push(project_id);
         }
 
-        if (status) {
-            query += ' AND p.status = ?';
-            params.push(status);
-        }
-
         if (search) {
-            query += ' AND (p.name LIKE ? OR p.description LIKE ?)';
-            params.push(`%${search}%`, `%${search}%`);
+            query += ' AND (p.name LIKE ?)';
+            params.push(`%${search}%`);
         }
 
         query += ' GROUP BY p.id ORDER BY p.created_at DESC';
 
         const [pages] = await db.execute(query, params);
         res.json({ success: true, data: pages });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
+// Get available steps for a page (steps not yet assigned, or assigned to excludeTaskId when editing)
+exports.getAvailableSteps = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const excludeTaskId = req.query.exclude_task_id ? parseInt(req.query.exclude_task_id) : null;
+
+        let allSteps = [];
+        try {
+            const [steps] = await db.execute(
+                `SELECT ps.id, ps.page_id, ps.step_number, ps.step_name
+                 FROM page_steps ps
+                 WHERE ps.page_id = ?
+                 ORDER BY ps.step_number ASC`,
+                [id]
+            );
+            allSteps = steps;
+        } catch {
+            return res.json({ success: true, data: [] });
+        }
+
+        let usedSteps = [];
+        try {
+            const [used] = await db.execute(
+                `SELECT step_id, id as task_id FROM tasks WHERE page_id = ? AND step_id IS NOT NULL`,
+                [id]
+            );
+            usedSteps = used;
+        } catch {
+            // step_id column may not exist yet
+        }
+
+        const usedByOtherTask = (stepId) => {
+            const used = usedSteps.find(r => r.step_id === stepId);
+            return used && (!excludeTaskId || used.task_id !== excludeTaskId);
+        };
+        const result = allSteps.filter(s => !usedByOtherTask(s.id));
+
+        res.json({ success: true, data: result });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: 'Server error' });
@@ -79,22 +118,53 @@ exports.getPageById = async (req, res) => {
             }
         }
 
-        // Get tasks
-        let tasksQuery = `
-            SELECT t.*, u.name as assigned_to_name, u.profile_picture
-            FROM tasks t
-            LEFT JOIN users u ON t.assigned_to = u.id
-            WHERE t.page_id = ?
-            ORDER BY t.created_at DESC
-        `;
-        const tasksParams = [id];
+        // Get steps (page_steps table might not exist if migration not run)
+        let steps = [];
+        try {
+            const [stepsResult] = await db.execute(
+                `SELECT id, page_id, step_number, step_name, created_at
+                 FROM page_steps
+                 WHERE page_id = ?
+                 ORDER BY step_number ASC`,
+                [id]
+            );
+            steps = stepsResult;
+        } catch {
+            // page_steps table may not exist
+        }
 
-        const [tasks] = await db.execute(tasksQuery, tasksParams);
+        // Get tasks (with step info if step_id column exists)
+        let tasks;
+        try {
+            const [tasksResult] = await db.execute(
+                `SELECT t.*, u.name as assigned_to_name, u.profile_picture,
+                        ps.step_number, ps.step_name
+                 FROM tasks t
+                 LEFT JOIN users u ON t.assigned_to = u.id
+                 LEFT JOIN page_steps ps ON t.step_id = ps.id
+                 WHERE t.page_id = ?
+                 ORDER BY COALESCE(ps.step_number, 999), t.created_at ASC`,
+                [id]
+            );
+            tasks = tasksResult;
+        } catch (err) {
+            // Fallback when step_id column doesn't exist (migration not run yet)
+            const [tasksResult] = await db.execute(
+                `SELECT t.*, u.name as assigned_to_name, u.profile_picture
+                 FROM tasks t
+                 LEFT JOIN users u ON t.assigned_to = u.id
+                 WHERE t.page_id = ?
+                 ORDER BY t.created_at DESC`,
+                [id]
+            );
+            tasks = tasksResult;
+        }
 
         res.json({
             success: true,
             data: {
                 ...pages[0],
+                steps,
                 tasks
             }
         });
@@ -104,14 +174,23 @@ exports.getPageById = async (req, res) => {
     }
 };
 
+
 // Create page
 exports.createPage = async (req, res) => {
-    try {
-        const { project_id, name, description, start_date, end_date, status } = req.body;
+    const connection = await db.getConnection();
 
+    try {
+        console.log('=== CREATE PAGE REQUEST ===');
+        console.log('User:', req.user);
+        console.log('Body:', req.body);
+
+        await connection.beginTransaction();
+
+        const { project_id, name, steps } = req.body;
 
         // Validasi input
         if (!project_id || !name) {
+            await connection.rollback();
             return res.status(400).json({
                 success: false,
                 message: 'Project and page name are required'
@@ -119,12 +198,13 @@ exports.createPage = async (req, res) => {
         }
 
         // Ambil client_id dari project
-        const [project] = await db.execute(
+        const [project] = await connection.execute(
             'SELECT id, client_id FROM projects WHERE id = ?',
             [project_id]
         );
 
         if (project.length === 0) {
+            await connection.rollback();
             return res.status(400).json({
                 success: false,
                 message: 'Project not found'
@@ -135,21 +215,32 @@ exports.createPage = async (req, res) => {
         console.log('Client ID from project:', client_id);
 
         // Insert page dengan client_id
-        const [result] = await db.execute(
-            `INSERT INTO pages (client_id, project_id, name, description, start_date, end_date, status, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        const [result] = await connection.execute(
+            `INSERT INTO pages (client_id, project_id, name, created_by)
+             VALUES (?, ?, ?, ?)`,
             [
-                client_id,                    // Dari project
+                client_id,
                 project_id,
                 name,
-                description || null,
-                start_date || null,
-                end_date || null,
-                status || 'planning',
                 req.user.id
             ]
         );
 
+        const pageId = result.insertId;
+
+        // Insert steps if provided (hanya sebagai referensi, tidak auto-create tasks)
+        if (steps && Array.isArray(steps) && steps.length > 0) {
+            for (const step of steps) {
+                await connection.execute(
+                    `INSERT INTO page_steps (page_id, step_number, step_name)
+                     VALUES (?, ?, ?)`,
+                    [pageId, step.step_number, step.step_name]
+                );
+            }
+            console.log(`Inserted ${steps.length} steps as reference (no auto-tasks created)`);
+        }
+
+        await connection.commit();
 
         // Log activity (dengan error handling terpisah)
         try {
@@ -157,35 +248,42 @@ exports.createPage = async (req, res) => {
                 req.user.id,
                 'created_page',
                 'page',
-                result.insertId,
+                pageId,
                 null,
-                { name, project_id, client_id },
+                { name, project_id, client_id, steps_count: steps?.length || 0 },
                 req.ip
             );
         } catch (logError) {
             console.error('Failed to log activity:', logError);
         }
 
+        console.log('=== PAGE CREATED SUCCESSFULLY ===');
         res.status(201).json({
             success: true,
             message: 'Page created successfully',
-            data: { id: result.insertId }
+            data: { id: pageId }
         });
 
     } catch (error) {
+        await connection.rollback();
+        console.error('=== CREATE PAGE ERROR ===');
         console.error('Error:', error);
+        console.error('Stack:', error.stack);
         res.status(500).json({
             success: false,
             message: 'Server error: ' + error.message
         });
+    } finally {
+        connection.release();
     }
 };
+
 
 // Update page
 exports.updatePage = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, description, start_date, end_date, status } = req.body;
+        const { name } = req.body;
 
         const [existing] = await db.execute('SELECT * FROM pages WHERE id = ?', [id]);
         if (existing.length === 0) {
@@ -193,12 +291,11 @@ exports.updatePage = async (req, res) => {
         }
 
         await db.execute(
-            `UPDATE pages SET name = ?, description = ?, 
-       start_date = ?, end_date = ?, status = ? WHERE id = ?`,
-            [name, description, start_date, end_date, status, id]
+            `UPDATE pages SET name = ? WHERE id = ?`,
+            [name, id]
         );
 
-        await logActivity(req.user.id, 'updated_page', 'page', id, existing[0], { name, status }, req.ip);
+        await logActivity(req.user.id, 'updated_page', 'page', id, existing[0], { name }, req.ip);
 
         res.json({ success: true, message: 'Page updated successfully' });
     } catch (error) {

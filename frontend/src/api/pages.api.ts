@@ -1,5 +1,5 @@
 import { api } from './axios';
-import type { Page, CreatePageData } from '../types/page.types';
+import type { Page, CreatePageData, PageStep } from '../types/page.types';
 import type { ApiResponse } from '../types/api.types';
 
 export const pagesApi = {
@@ -10,6 +10,12 @@ export const pagesApi = {
 
     getById: async (id: number) => {
         const { data } = await api.get<ApiResponse<Page>>(`/pages/${id}`);
+        return data;
+    },
+
+    getAvailableSteps: async (pageId: number, excludeTaskId?: number) => {
+        const params = excludeTaskId ? { exclude_task_id: excludeTaskId } : undefined;
+        const { data } = await api.get<ApiResponse<PageStep[]>>(`/pages/${pageId}/available-steps`, { params });
         return data;
     },
 
