@@ -5,22 +5,22 @@ const { sendEmail, emailTemplates } = require('../utils/emailService');
 // Get all tasks (with filters)
 exports.getAllTasks = async (req, res) => {
     try {
-        const { project_id, assigned_to, status, priority, search } = req.query;
+        const { page_id, assigned_to, status, priority, search } = req.query;
 
         // Role-based visibility logic
         let filterAssignedTo = assigned_to;
         if (req.user.role === 'artist') {
-            if (project_id) {
-                // If filtering by project, check if artist belongs to that project
+            if (page_id) {
+                // If filtering by page, check if artist belongs to that page
                 const [access] = await db.execute(
-                    'SELECT 1 FROM tasks WHERE project_id = ? AND assigned_to = ? LIMIT 1',
-                    [project_id, req.user.id]
+                    'SELECT 1 FROM tasks WHERE page_id = ? AND assigned_to = ? LIMIT 1',
+                    [page_id, req.user.id]
                 );
                 if (access.length === 0) {
-                    return res.status(403).json({ success: false, message: 'Access denied to this project' });
+                    return res.status(403).json({ success: false, message: 'Access denied to this page' });
                 }
                 // If they have access, we don't force assigned_to filter
-                // They can see everyone's tasks in this project
+                // They can see everyone's tasks in this page
             } else {
                 // Global view: artists only see their own tasks
                 filterAssignedTo = req.user.id;
@@ -29,14 +29,18 @@ exports.getAllTasks = async (req, res) => {
 
         let query = `
       SELECT t.*, 
+             pg.name as page_name,
              p.name as project_name,
              c.name as client_name,
              artist.name as assigned_to_name,
              artist.email as assigned_to_email,
              artist.profile_picture as artist_profile,
-             manager.name as assigned_by_name
+             manager.name as assigned_by_name,
+             ps.step_number, ps.step_name
       FROM tasks t
-      LEFT JOIN projects p ON t.project_id = p.id
+      LEFT JOIN pages pg ON t.page_id = pg.id
+      LEFT JOIN page_steps ps ON t.step_id = ps.id
+      LEFT JOIN projects p ON pg.project_id = p.id
       LEFT JOIN clients c ON p.client_id = c.id
       LEFT JOIN users artist ON t.assigned_to = artist.id
       LEFT JOIN users manager ON t.assigned_by = manager.id
@@ -44,9 +48,9 @@ exports.getAllTasks = async (req, res) => {
     `;
         const params = [];
 
-        if (project_id) {
-            query += ' AND t.project_id = ?';
-            params.push(project_id);
+        if (page_id) {
+            query += ' AND t.page_id = ?';
+            params.push(page_id);
         }
 
         if (filterAssignedTo) {
@@ -119,13 +123,17 @@ exports.getTaskById = async (req, res) => {
 
         const [tasks] = await db.execute(
             `SELECT t.*, 
+              pg.name as page_name,
               p.name as project_name,
               c.name as client_name,
               artist.name as assigned_to_name,
               artist.email as assigned_to_email,
-              manager.name as assigned_by_name
+              manager.name as assigned_by_name,
+              ps.step_number, ps.step_name
        FROM tasks t
-       LEFT JOIN projects p ON t.project_id = p.id
+       LEFT JOIN pages pg ON t.page_id = pg.id
+       LEFT JOIN page_steps ps ON t.step_id = ps.id
+       LEFT JOIN projects p ON pg.project_id = p.id
        LEFT JOIN clients c ON p.client_id = c.id
        LEFT JOIN users artist ON t.assigned_to = artist.id
        LEFT JOIN users manager ON t.assigned_by = manager.id
@@ -163,21 +171,46 @@ exports.getTaskById = async (req, res) => {
 // Create task
 exports.createTask = async (req, res) => {
     try {
-        const { project_id, title, description, assigned_to, priority, deadline } = req.body;
+        const { page_id, step_id, title, description, assigned_to, priority, deadline } = req.body;
 
-        if (!project_id || !title || !assigned_to) {
-            return res.status(400).json({ success: false, message: 'Project, title, and assigned artist are required' });
+        if (!page_id || !title || !assigned_to) {
+            return res.status(400).json({ success: false, message: 'Page, title, and assigned artist are required' });
+        }
+
+        // Validate step: required and must belong to page
+        if (!step_id) {
+            return res.status(400).json({ success: false, message: 'Step must be selected' });
+        }
+
+        const [stepCheck] = await db.execute(
+            'SELECT id, page_id FROM page_steps WHERE id = ?',
+            [step_id]
+        );
+        if (stepCheck.length === 0) {
+            return res.status(400).json({ success: false, message: 'Invalid step' });
+        }
+        if (stepCheck[0].page_id !== parseInt(page_id)) {
+            return res.status(400).json({ success: false, message: 'Step does not belong to selected page' });
+        }
+
+        // Check if step is already used by another task
+        const [existingTask] = await db.execute(
+            'SELECT id FROM tasks WHERE step_id = ?',
+            [step_id]
+        );
+        if (existingTask.length > 0) {
+            return res.status(400).json({ success: false, message: 'This step is already assigned to another task' });
         }
 
         const [result] = await db.execute(
-            `INSERT INTO tasks (project_id, title, description, assigned_to, assigned_by, priority, deadline)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [project_id, title, description, assigned_to, req.user.id, priority || 'medium', deadline]
+            `INSERT INTO tasks (page_id, step_id, title, description, assigned_to, assigned_by, priority, deadline)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [page_id, step_id, title, description, assigned_to, req.user.id, priority || 'medium', deadline]
         );
 
-        // Get artist and project details for notification
+        // Get artist and Page details for notification
         const [artist] = await db.execute('SELECT name, email FROM users WHERE id = ?', [assigned_to]);
-        const [project] = await db.execute('SELECT name FROM projects WHERE id = ?', [project_id]);
+        const [page] = await db.execute('SELECT name FROM pages WHERE id = ?', [page_id]);
 
         // Create notification
         await db.execute(
@@ -194,11 +227,11 @@ exports.createTask = async (req, res) => {
         );
 
         // Send email
-        if (artist.length > 0 && project.length > 0) {
+        if (artist.length > 0 && page.length > 0) {
             const emailHtml = emailTemplates.taskAssigned(
                 artist[0].name,
                 title,
-                project[0].name,
+                page[0].name,
                 deadline || 'Not set'
             );
             await sendEmail(artist[0].email, 'New Task Assigned - Tekadverse PMS', emailHtml);
@@ -212,7 +245,7 @@ exports.createTask = async (req, res) => {
             data: {
                 id: result.insertId,
                 title,
-                project_id,
+                page_id,
                 assigned_to
             }
         });
@@ -325,12 +358,14 @@ exports.updateTaskStatus = async (req, res) => {
 exports.updateTask = async (req, res) => {
     try {
         const { id } = req.params;
-        let { title, description, assigned_to, priority, deadline, status } = req.body;
+        let { step_id, title, description, assigned_to, priority, deadline, status } = req.body;
 
         const [existing] = await db.execute('SELECT * FROM tasks WHERE id = ?', [id]);
         if (existing.length === 0) {
             return res.status(404).json({ message: 'Task not found' });
         }
+
+        const task = existing[0];
 
         // Validate status if provided
         if (status) {
@@ -340,10 +375,29 @@ exports.updateTask = async (req, res) => {
             }
         }
 
+        // Validate step_id if provided (for manager/admin only)
+        if (step_id !== undefined && req.user.role !== 'artist') {
+            const [stepCheck] = await db.execute(
+                'SELECT id, page_id FROM page_steps WHERE id = ?',
+                [step_id]
+            );
+            if (stepCheck.length === 0) {
+                return res.status(400).json({ success: false, message: 'Invalid step' });
+            }
+            if (stepCheck[0].page_id !== task.page_id) {
+                return res.status(400).json({ success: false, message: 'Step does not belong to this page' });
+            }
+            const [existingTask] = await db.execute(
+                'SELECT id FROM tasks WHERE step_id = ? AND id != ?',
+                [step_id, id]
+            );
+            if (existingTask.length > 0) {
+                return res.status(400).json({ success: false, message: 'This step is already assigned to another task' });
+            }
+        }
+
         // Restrict artist to only update status
         if (req.user.role === 'artist') {
-            const task = existing[0];
-
             // Check if artist is trying to update a locked task
             const lockedStatuses = ['need_update', 'under_review', 'approved', 'done'];
             if (lockedStatuses.includes(task.status)) {
@@ -351,26 +405,20 @@ exports.updateTask = async (req, res) => {
             }
 
             // Force reset restricted fields to existing values
+            step_id = task.step_id;
             title = task.title;
             description = task.description;
             assigned_to = task.assigned_to;
             priority = task.priority;
             deadline = task.deadline;
-
-            // Allow status change, but simpler validation
-            if (status && status !== task.status) {
-                // Determine if we need to call updateTaskStatus logic for side effects?
-                // For now, let's just allow the update as is, but you might want to consider
-                // redirecting to updateTaskStatus logic if status changed.
-                // However, preserving existing behavior of updateTask (no notifications) 
-                // is safer to avoid regression unless requested.
-            }
+        } else if (step_id === undefined) {
+            step_id = task.step_id;
         }
 
         await db.execute(
-            `UPDATE tasks SET title = ?, description = ?, assigned_to = ?, 
+            `UPDATE tasks SET step_id = ?, title = ?, description = ?, assigned_to = ?, 
        priority = ?, deadline = ?, status = ? WHERE id = ?`,
-            [title, description, assigned_to, priority, deadline, status, id]
+            [step_id, title, description, assigned_to, priority, deadline, status, id]
         );
 
         await logActivity(req.user.id, 'updated_task', 'task', id, existing[0], { title, status }, req.ip);

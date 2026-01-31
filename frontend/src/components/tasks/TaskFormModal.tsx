@@ -5,36 +5,38 @@ import { z } from 'zod';
 import { X, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { tasksApi } from '../../api/tasks.api';
-import { projectsApi } from '../../api/projects.api';
+import { pagesApi } from '../../api/pages.api';
 import { usersApi } from '../../api/users.api';
 import type { Task, CreateTaskData, UpdateTaskData } from '../../types/task.types';
-import type { Project } from '../../types/project.types';
+import type { Page, PageStep } from '../../types/page.types';
 import type { User } from '../../types/user.types';
 import { useAuthStore } from '../../store/authStore';
 
-const taskSchema = z.object({
+const taskSchemaBase = z.object({
     title: z.string().min(3, 'Title must be at least 3 characters'),
     description: z.string().optional().or(z.literal('')),
-    project_id: z.number().min(1, 'Please select a project'),
+    page_id: z.number().min(1, 'Please select a page'),
+    step_id: z.number().optional(),
     assigned_to: z.number().min(1, 'Please select an artist'),
     priority: z.enum(['low', 'medium', 'high', 'urgent']),
     deadline: z.string().optional().or(z.literal('')),
     status: z.enum(['todo', 'working', 'finished', 'need_update', 'under_review', 'approved', 'done', 'dropped']).optional(),
 });
 
-type TaskFormData = z.infer<typeof taskSchema>;
+type TaskFormData = z.infer<typeof taskSchemaBase>;
 
 interface TaskFormModalProps {
     task?: Task | null;
-    projectId?: number; // Pre-select project if opened from ProjectDetail
+    pageId?: number; // Pre-select page if opened from PageDetail
     onClose: () => void;
     onSuccess: () => void;
 }
 
-export const TaskFormModal = ({ task, projectId, onClose, onSuccess }: TaskFormModalProps) => {
+export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModalProps) => {
     const [loading, setLoading] = useState(false);
-    const [projects, setProjects] = useState<Project[]>([]);
+    const [pages, setPages] = useState<Page[]>([]);
     const [artists, setArtists] = useState<User[]>([]);
+    const [availableSteps, setAvailableSteps] = useState<PageStep[]>([]);
     const [fetchingData, setFetchingData] = useState(true);
     const { user } = useAuthStore();
     const isArtist = user?.role === 'artist';
@@ -43,10 +45,15 @@ export const TaskFormModal = ({ task, projectId, onClose, onSuccess }: TaskFormM
     const isLocked = isArtist && task && ['need_update', 'under_review', 'approved', 'done'].includes(task.status);
 
     const isEdit = !!task;
+    const taskSchema = taskSchemaBase.refine(
+        (data) => isEdit || (data.step_id != null && data.step_id > 0),
+        { message: 'Please select a step', path: ['step_id'] }
+    );
 
     const {
         register,
         handleSubmit,
+        watch,
         formState: { errors },
         reset,
     } = useForm<TaskFormData>({
@@ -54,7 +61,8 @@ export const TaskFormModal = ({ task, projectId, onClose, onSuccess }: TaskFormM
         defaultValues: {
             title: '',
             description: '',
-            project_id: projectId || 0,
+            page_id: pageId || 0,
+            step_id: 0,
             assigned_to: 0,
             priority: 'medium',
             deadline: '',
@@ -62,13 +70,17 @@ export const TaskFormModal = ({ task, projectId, onClose, onSuccess }: TaskFormM
         },
     });
 
+    const watchedPageId = watch('page_id');
+    const currentPageId = pageId || watchedPageId || task?.page_id;
+
     useEffect(() => {
         loadData();
         if (task) {
             reset({
                 title: task.title,
                 description: task.description || '',
-                project_id: task.project_id,
+                page_id: task.page_id,
+                step_id: task.step_id || 0,
                 assigned_to: task.assigned_to,
                 priority: task.priority,
                 deadline: task.deadline ? new Date(task.deadline).toISOString().split('T')[0] : '',
@@ -76,6 +88,23 @@ export const TaskFormModal = ({ task, projectId, onClose, onSuccess }: TaskFormM
             });
         }
     }, [task, reset]);
+
+    // Fetch available steps when page is selected
+    useEffect(() => {
+        if (!currentPageId || isArtist) {
+            setAvailableSteps([]);
+            return;
+        }
+        const loadSteps = async () => {
+            try {
+                const res = await pagesApi.getAvailableSteps(currentPageId, task?.id);
+                setAvailableSteps(res.data || []);
+            } catch {
+                setAvailableSteps([]);
+            }
+        };
+        loadSteps();
+    }, [currentPageId, task?.id, isArtist]);
 
     const loadData = async () => {
         if (isArtist) {
@@ -85,11 +114,11 @@ export const TaskFormModal = ({ task, projectId, onClose, onSuccess }: TaskFormM
 
         try {
             setFetchingData(true);
-            const [projectsRes, artistsRes] = await Promise.all([
-                projectsApi.getAll(),
+            const [pagesRes, artistsRes] = await Promise.all([
+                pagesApi.getAll(),
                 usersApi.getArtists(),
             ]);
-            setProjects(projectsRes.data || []);
+            setPages(pagesRes.data || []);
             setArtists(artistsRes.data || []);
         } catch (error) {
             toast.error('Failed to load projects or artists');
@@ -105,6 +134,7 @@ export const TaskFormModal = ({ task, projectId, onClose, onSuccess }: TaskFormM
             // Clean up empty strings
             const formattedData = {
                 ...data,
+                step_id: data.step_id && data.step_id > 0 ? data.step_id : undefined,
                 description: data.description || undefined,
                 deadline: data.deadline || undefined,
             };
@@ -148,7 +178,7 @@ export const TaskFormModal = ({ task, projectId, onClose, onSuccess }: TaskFormM
                             {...register('title')}
                             disabled={isArtist}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
-                            placeholder="Design Homepage"
+                            placeholder="Sketch"
                         />
                         {errors.title && <p className="text-xs text-red-500">{errors.title.message}</p>}
                     </div>
@@ -166,27 +196,51 @@ export const TaskFormModal = ({ task, projectId, onClose, onSuccess }: TaskFormM
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Project</label>
+                            <label className="text-sm font-medium text-gray-700">Page</label>
                             {isArtist ? (
                                 <input
-                                    value={task?.project?.name || task?.project_name || 'Current Project'}
+                                    value={task?.page_name || 'Current Page'}
                                     disabled
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
                                 />
                             ) : (
                                 <select
-                                    {...register('project_id', { valueAsNumber: true })}
+                                    {...register('page_id', { valueAsNumber: true })}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
-                                    disabled={(!!projectId && !isEdit) || isArtist}
+                                    disabled={(!!pageId && !isEdit) || isArtist}
                                 >
-                                    <option value={0}>Select Project</option>
-                                    {projects.map((p) => (
+                                    <option value={0}>Select Page</option>
+                                    {pages.map((p) => (
                                         <option key={p.id} value={p.id}>{p.name}</option>
                                     ))}
                                 </select>
                             )}
-                            {errors.project_id && <p className="text-xs text-red-500">{errors.project_id.message}</p>}
+                            {errors.page_id && <p className="text-xs text-red-500">{errors.page_id.message}</p>}
                         </div>
+
+                        {!isArtist && currentPageId > 0 && (
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">Step</label>
+                                <select
+                                    {...register('step_id', { valueAsNumber: true })}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                                    disabled={isArtist}
+                                >
+                                    <option value={0}>Select Step</option>
+                                    {availableSteps.map((s) => (
+                                        <option key={s.id} value={s.id!}>
+                                            {s.step_number}. {s.step_name}
+                                        </option>
+                                    ))}
+                                </select>
+                                {availableSteps.length === 0 && currentPageId > 0 && (
+                                    <p className="text-xs text-amber-600">
+                                        No steps available. Ensure the page has steps defined, and that not all steps are already assigned.
+                                    </p>
+                                )}
+                                {errors.step_id && <p className="text-xs text-red-500">{errors.step_id.message}</p>}
+                            </div>
+                        )}
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Assign To Artist</label>

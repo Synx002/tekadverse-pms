@@ -77,7 +77,7 @@ export const Users = () => {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Users</h1>
                     <p className="text-gray-600 mt-1">Manage team members</p>
@@ -87,7 +87,7 @@ export const Users = () => {
                         setSelectedUser(null);
                         setShowModal(true);
                     }}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                    className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 w-full sm:w-auto"
                 >
                     <Plus className="w-5 h-5" />
                     New User
@@ -104,13 +104,13 @@ export const Users = () => {
                             placeholder="Search users..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                         />
                     </div>
                     <select
                         value={roleFilter}
                         onChange={(e) => setRoleFilter(e.target.value as UserRole | 'all')}
-                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-sm sm:text-base"
                     >
                         <option value="all">All Roles</option>
                         <option value="admin">Admin</option>
@@ -130,56 +130,59 @@ export const Users = () => {
                     <p className="text-gray-600">No users found</p>
                 </div>
             ) : (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <table className="w-full">
-                        <thead className="bg-gray-50 border-b border-gray-200">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden overflow-x-auto">
+                    <table className="w-full min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     User
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Email
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Role
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Status
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-4 sm:px-6 py-3 text-right sm:text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Actions
                                 </th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200">
+                        <tbody className="bg-white divide-y divide-gray-200 text-sm sm:text-base">
                             {filteredUsers.map((user) => (
-                                <tr key={user.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4">
+                                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center gap-3">
                                             {user.profile_picture ? (
                                                 <img
                                                     src={`${BASE_URL}/${user.profile_picture}`}
                                                     alt={user.name}
-                                                    className="w-10 h-10 rounded-full object-cover"
+                                                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
                                                 />
                                             ) : (
-                                                <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-medium">
+                                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-medium text-xs sm:text-sm">
                                                     {user.name.charAt(0).toUpperCase()}
                                                 </div>
                                             )}
-                                            <span className="font-medium text-gray-900">{user.name}</span>
+                                            <div className="flex flex-col">
+                                                <span className="font-medium text-gray-900 truncate max-w-[120px] sm:max-w-none">{user.name}</span>
+                                                <span className="sm:hidden text-[10px] text-gray-500 truncate max-w-[120px]">{user.role}</span>
+                                            </div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-600">
+                                    <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                         {user.email}
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
                                         <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
                                             {getRoleIcon(user.role)}
                                             {user.role}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
                                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${user.is_active
                                             ? 'bg-green-100 text-green-800'
                                             : 'bg-gray-100 text-gray-800'
@@ -187,19 +190,21 @@ export const Users = () => {
                                             {user.is_active ? 'Active' : 'Inactive'}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
+                                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right">
+                                        <div className="flex items-center justify-end sm:justify-start gap-2 sm:gap-3">
                                             <button
                                                 onClick={() => handleEditUser(user)}
-                                                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                                                title="Edit"
                                             >
-                                                <Edit className="w-5 h-5 cursor-pointer" />
+                                                <Edit className="w-4 h-4 sm:w-5 sm:h-5" />
                                             </button>
                                             <button
                                                 onClick={() => handleDeleteUser(user.id)}
-                                                className="text-red-600 hover:text-red-700 text-sm font-medium"
+                                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                                title="Delete"
                                             >
-                                                <Trash2 className="w-5 h-5 cursor-pointer" />
+                                                <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
                                             </button>
                                         </div>
                                     </td>

@@ -11,9 +11,6 @@ import type { Client } from '../../types/client.types';
 const projectSchema = z.object({
     client_id: z.number().min(1, 'Client is required'),
     name: z.string().min(3, 'Name must be at least 3 characters'),
-    description: z.string().optional(),
-    start_date: z.string().optional(),
-    end_date: z.string().optional(),
     status: z.enum(['planning', 'active', 'on_hold', 'completed', 'cancelled']).optional(),
 });
 
@@ -40,9 +37,6 @@ export const ProjectFormModal = ({ project, clients, onClose, onSuccess }: Proje
         defaultValues: {
             client_id: project?.client_id || 0,
             name: project?.name || '',
-            description: project?.description || '',
-            start_date: project?.start_date ? new Date(project.start_date).toISOString().split('T')[0] : '',
-            end_date: project?.end_date ? new Date(project.end_date).toISOString().split('T')[0] : '',
             status: (project?.status || 'planning') as ProjectStatus,
         },
     });
@@ -52,9 +46,6 @@ export const ProjectFormModal = ({ project, clients, onClose, onSuccess }: Proje
             reset({
                 client_id: project.client_id,
                 name: project.name,
-                description: project.description || '',
-                start_date: project.start_date ? new Date(project.start_date).toISOString().split('T')[0] : '',
-                end_date: project.end_date ? new Date(project.end_date).toISOString().split('T')[0] : '',
                 status: project.status,
             });
         }
@@ -124,47 +115,16 @@ export const ProjectFormModal = ({ project, clients, onClose, onSuccess }: Proje
                             {...register('name')}
                             type="text"
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="E.g., Website Redesign"
+                            placeholder="Project Name"
                         />
                         {errors.name && (
                             <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
                         )}
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Description
-                        </label>
-                        <textarea
-                            {...register('description')}
-                            rows={4}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="Project description..."
-                        />
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Start Date
-                            </label>
-                            <input
-                                {...register('start_date')}
-                                type="date"
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                End Date
-                            </label>
-                            <input
-                                {...register('end_date')}
-                                type="date"
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                        </div>
-                    </div>
+
+
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
