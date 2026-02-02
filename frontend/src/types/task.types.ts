@@ -34,6 +34,7 @@ export interface Task {
     comments_count?: number;
     step_number?: number;
     step_name?: string;
+    step_price?: number;
 }
 
 export interface CreateTaskData {

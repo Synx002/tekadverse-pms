@@ -53,7 +53,7 @@ exports.getAvailableSteps = async (req, res) => {
         let allSteps = [];
         try {
             const [steps] = await db.execute(
-                `SELECT ps.id, ps.page_id, ps.step_number, ps.step_name
+                `SELECT ps.id, ps.page_id, ps.step_number, ps.step_name, ps.price
                  FROM page_steps ps
                  WHERE ps.page_id = ?
                  ORDER BY ps.step_number ASC`,
@@ -122,15 +122,22 @@ exports.getPageById = async (req, res) => {
         let steps = [];
         try {
             const [stepsResult] = await db.execute(
-                `SELECT id, page_id, step_number, step_name, created_at
-                 FROM page_steps
-                 WHERE page_id = ?
-                 ORDER BY step_number ASC`,
+                `SELECT id, page_id, step_number, step_name, price, created_at
+                 FROM page_steps WHERE page_id = ? ORDER BY step_number ASC`,
                 [id]
             );
-            steps = stepsResult;
+            steps = stepsResult.map(s => ({ ...s, price: s.price ?? 0 }));
         } catch {
-            // page_steps table may not exist
+            try {
+                const [stepsResult] = await db.execute(
+                    `SELECT id, page_id, step_number, step_name, created_at
+                     FROM page_steps WHERE page_id = ? ORDER BY step_number ASC`,
+                    [id]
+                );
+                steps = stepsResult.map(s => ({ ...s, price: 0 }));
+            } catch {
+                // page_steps table may not exist
+            }
         }
 
         // Get tasks (with step info if step_id column exists)
@@ -138,7 +145,7 @@ exports.getPageById = async (req, res) => {
         try {
             const [tasksResult] = await db.execute(
                 `SELECT t.*, u.name as assigned_to_name, u.profile_picture,
-                        ps.step_number, ps.step_name
+                        ps.step_number, ps.step_name, ps.price as step_price
                  FROM tasks t
                  LEFT JOIN users u ON t.assigned_to = u.id
                  LEFT JOIN page_steps ps ON t.step_id = ps.id
@@ -147,7 +154,7 @@ exports.getPageById = async (req, res) => {
                 [id]
             );
             tasks = tasksResult;
-        } catch (err) {
+        } catch {
             // Fallback when step_id column doesn't exist (migration not run yet)
             const [tasksResult] = await db.execute(
                 `SELECT t.*, u.name as assigned_to_name, u.profile_picture
@@ -231,10 +238,11 @@ exports.createPage = async (req, res) => {
         // Insert steps if provided (hanya sebagai referensi, tidak auto-create tasks)
         if (steps && Array.isArray(steps) && steps.length > 0) {
             for (const step of steps) {
+                const price = step.price != null ? parseFloat(step.price) : 0;
                 await connection.execute(
-                    `INSERT INTO page_steps (page_id, step_number, step_name)
-                     VALUES (?, ?, ?)`,
-                    [pageId, step.step_number, step.step_name]
+                    `INSERT INTO page_steps (page_id, step_number, step_name, price)
+                     VALUES (?, ?, ?, ?)`,
+                    [pageId, step.step_number, step.step_name, price]
                 );
             }
             console.log(`Inserted ${steps.length} steps as reference (no auto-tasks created)`);
@@ -281,26 +289,54 @@ exports.createPage = async (req, res) => {
 
 // Update page
 exports.updatePage = async (req, res) => {
+    const connection = await db.getConnection();
     try {
         const { id } = req.params;
-        const { name } = req.body;
+        const { name, steps } = req.body;
 
-        const [existing] = await db.execute('SELECT * FROM pages WHERE id = ?', [id]);
+        const [existing] = await connection.execute('SELECT * FROM pages WHERE id = ?', [id]);
         if (existing.length === 0) {
             return res.status(404).json({ message: 'Page not found' });
         }
 
-        await db.execute(
-            `UPDATE pages SET name = ? WHERE id = ?`,
-            [name, id]
-        );
+        await connection.beginTransaction();
 
-        await logActivity(req.user.id, 'updated_page', 'page', id, existing[0], { name }, req.ip);
+        if (name !== undefined) {
+            await connection.execute(
+                `UPDATE pages SET name = ? WHERE id = ?`,
+                [name, id]
+            );
+        }
+
+        // Update steps if provided
+        if (steps && Array.isArray(steps)) {
+            for (const step of steps) {
+                const price = step.price != null ? parseFloat(step.price) : 0;
+                if (step.id) {
+                    await connection.execute(
+                        `UPDATE page_steps SET step_name = ?, price = ? WHERE id = ? AND page_id = ?`,
+                        [step.step_name, price, step.id, id]
+                    );
+                } else {
+                    await connection.execute(
+                        `INSERT INTO page_steps (page_id, step_number, step_name, price)
+                         VALUES (?, ?, ?, ?)`,
+                        [id, step.step_number, step.step_name, price]
+                    );
+                }
+            }
+        }
+
+        await connection.commit();
+        await logActivity(req.user.id, 'updated_page', 'page', id, existing[0], { name, steps_count: steps?.length }, req.ip);
 
         res.json({ success: true, message: 'Page updated successfully' });
     } catch (error) {
+        await connection.rollback();
         console.error(error);
         res.status(500).json({ message: 'Server error' });
+    } finally {
+        connection.release();
     }
 };
 

@@ -22,4 +22,8 @@ export const notificationsApi = {
         const { data } = await api.delete<ApiResponse<null>>(`/notifications/${id}`);
         return data;
     },
+    getUnreadCount: async () => {
+        const { data } = await api.get<ApiResponse<{ count: number }>>('/notifications/unread-count');
+        return data;
+    },
 };

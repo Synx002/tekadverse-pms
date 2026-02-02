@@ -10,6 +10,9 @@ export interface RegisterData {
     email: string;
     password: string;
     role: UserRole;
+    bank_name?: string;
+    bank_account_number?: string;
+    bank_account_holder?: string;
 }
 
 export interface AuthResponse {

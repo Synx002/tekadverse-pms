@@ -48,4 +48,14 @@ export const usersApi = {
         const { data } = await api.get<ApiResponse<User[]>>('/users/artists');
         return data;
     },
+    getMe: async () => {
+        const { data } = await api.get<ApiResponse<User>>('/users/me');
+        return data;
+    },
+    uploadProfilePicture: async (formData: FormData) => {
+        const { data } = await api.post<ApiResponse<{ filePath: string }>>('/users/upload-profile', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        return data;
+    },
 };

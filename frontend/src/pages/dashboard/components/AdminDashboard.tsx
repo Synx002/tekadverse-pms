@@ -1,17 +1,25 @@
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Briefcase } from 'lucide-react';
+import { LayoutDashboard, Users, Briefcase, Banknote } from 'lucide-react';
 import type { Task } from '../../../types/task.types';
 import type { Project } from '../../../types/project.types';
 import type { User } from '../../../types/user.types';
+
+interface PayoutItem {
+    artist_id: number;
+    artist_name: string;
+    artist_email: string;
+    total_pending: number;
+}
 
 interface AdminDashboardProps {
     projects: Project[];
     tasks: Task[];
     users: User[];
+    payouts: { payouts: PayoutItem[]; total_to_pay: number } | null;
     loading: boolean;
 }
 
-export const AdminDashboard = ({ projects, tasks, users, loading }: AdminDashboardProps) => {
+export const AdminDashboard = ({ projects, tasks, users, payouts, loading }: AdminDashboardProps) => {
     const navigate = useNavigate();
 
     // In a real app, we'd fetch these from separate endpoints, 
@@ -60,6 +68,41 @@ export const AdminDashboard = ({ projects, tasks, users, loading }: AdminDashboa
                     </div>
                 ))}
             </div>
+
+            {payouts && payouts.payouts.length > 0 && (
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-amber-50">
+                        <h2 className="font-semibold text-amber-900 flex items-center gap-2">
+                            <Banknote size={18} /> Pembayaran ke Artist
+                        </h2>
+                        <span className="text-sm font-bold text-amber-800">
+                            Total: Rp {payouts.total_to_pay.toLocaleString('id-ID')}
+                        </span>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="text-left px-4 py-3 font-medium text-gray-700">Artist</th>
+                                    <th className="text-left px-4 py-3 font-medium text-gray-700">Email</th>
+                                    <th className="text-right px-4 py-3 font-medium text-gray-700">Jumlah (Rp)</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                                {payouts.payouts.map((p) => (
+                                    <tr key={p.artist_id} className="hover:bg-gray-50">
+                                        <td className="px-4 py-3 font-medium text-gray-900">{p.artist_name}</td>
+                                        <td className="px-4 py-3 text-gray-600">{p.artist_email}</td>
+                                        <td className="px-4 py-3 text-right font-semibold text-amber-700">
+                                            Rp {p.total_pending.toLocaleString('id-ID')}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
 
             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                 <h2 className="font-semibold text-gray-800 mb-4">Latest Projects</h2>

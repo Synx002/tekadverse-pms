@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { pagesApi } from '../../api/pages.api';
@@ -11,68 +11,103 @@ interface PageFormModalProps {
     onSuccess: () => void;
 }
 
-export const PageFormModal: React.FC<PageFormModalProps> = ({ projectId, page, onClose, onSuccess }) => {
-    const [formData, setFormData] = useState<CreatePageData>({
-        project_id: projectId,
-        name: page?.name || '',
-        steps: page?.steps || [],
-    });
-    const [stepCount, setStepCount] = useState<number>(page?.steps?.length || 0);
-    const [stepNames, setStepNames] = useState<string[]>(
-        page?.steps?.map(s => s.step_name) || []
-    );
+interface StepForm {
+    id?: number;
+    step_name: string;
+    price: number;
+}
+
+const MAX_STEPS = 10;
+
+export const PageFormModal: React.FC<PageFormModalProps> = ({
+    projectId,
+    page,
+    onClose,
+    onSuccess
+}) => {
+    const [name, setName] = useState(page?.name || '');
+    const [steps, setSteps] = useState<StepForm[]>([]);
     const [loading, setLoading] = useState(false);
 
-    const handleStepCountChange = (count: number) => {
-        setStepCount(count);
-        // Initialize step names array with empty strings
-        const newStepNames = Array(count).fill('').map((_, i) => stepNames[i] || '');
-        setStepNames(newStepNames);
+    useEffect(() => {
+        if (page?.steps) {
+            setSteps(
+                page.steps.map(s => ({
+                    id: s.id,
+                    step_name: s.step_name,
+                    price: s.price ?? 0
+                }))
+            );
+        }
+    }, [page?.id]);
+
+    const handleAddStep = () => {
+        if (steps.length >= MAX_STEPS) {
+            toast.error(`Maximum ${MAX_STEPS} steps allowed`);
+            return;
+        }
+
+        setSteps([...steps, { step_name: '', price: 0 }]);
     };
 
-    const handleStepNameChange = (index: number, value: string) => {
-        const newStepNames = [...stepNames];
-        newStepNames[index] = value;
-        setStepNames(newStepNames);
+    const handleRemoveStep = (index: number) => {
+        setSteps(steps.filter((_, i) => i !== index));
     };
+
+    const handleStepChange = (
+        index: number,
+        field: 'step_name' | 'price',
+        value: string
+    ) => {
+        const updated = [...steps];
+
+        if (field === 'price') {
+            updated[index].price =
+                parseInt(value.replace(/\D/g, ''), 10) || 0;
+        } else {
+            updated[index].step_name = value;
+        }
+
+        setSteps(updated);
+    };
+
+    const formatPrice = (val: number) =>
+        val ? val.toLocaleString('id-ID') : '';
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Validate step names if step count > 0
-        if (stepCount > 0) {
-            const emptySteps = stepNames.some(name => !name.trim());
-            if (emptySteps) {
-                toast.error('Please fill in all step names');
-                return;
-            }
+        if (steps.some(s => !s.step_name.trim())) {
+            toast.error('Please fill in all step names');
+            return;
         }
 
         try {
             setLoading(true);
 
-            // Prepare steps data
-            const steps: PageStep[] = stepCount > 0
-                ? stepNames.map((name, index) => ({
-                    step_number: index + 1,
-                    step_name: name.trim()
-                }))
-                : [];
+            const preparedSteps: PageStep[] = steps.map((step, index) => ({
+                ...(step.id && { id: step.id }),
+                step_number: index + 1,
+                step_name: step.step_name.trim(),
+                price: step.price
+            }));
 
-            const dataToSubmit = {
-                ...formData,
-                steps: steps.length > 0 ? steps : undefined
+            const payload: CreatePageData = {
+                project_id: projectId,
+                name,
+                steps: preparedSteps.length ? preparedSteps : undefined
             };
 
             if (page) {
-                await pagesApi.update(page.id, dataToSubmit);
+                await pagesApi.update(page.id, payload);
                 toast.success('Page updated successfully');
             } else {
-                await pagesApi.create(dataToSubmit);
+                await pagesApi.create(payload);
                 toast.success('Page created successfully');
             }
+
             onSuccess();
-        } catch (error) {
+        } catch {
             toast.error('Failed to save page');
         } finally {
             setLoading(false);
@@ -82,81 +117,118 @@ export const PageFormModal: React.FC<PageFormModalProps> = ({ projectId, page, o
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
-                <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-gray-900">{page ? 'Edit Page' : 'New Page'}</h2>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
+                <div className="p-6 border-b flex items-center justify-between">
+                    <h2 className="text-xl font-bold">
+                        {page ? 'Edit Page' : 'New Page'}
+                    </h2>
+                    <button onClick={onClose}>
                         <X className="w-5 h-5 text-gray-500" />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+                <form
+                    onSubmit={handleSubmit}
+                    className="p-6 space-y-4 overflow-y-auto flex-1"
+                >
+                    {/* PAGE NAME */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Page Name</label>
+                        <label className="block text-sm font-medium mb-1">
+                            Page Name
+                        </label>
                         <input
                             type="text"
                             required
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                            placeholder="e.g. Home Page Design"
+                            value={name}
+                            onChange={e => setName(e.target.value)}
+                            className="w-full px-4 py-2 border rounded-lg"
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Number of Steps (Optional)
-                        </label>
-                        <input
-                            type="number"
-                            min="0"
-                            max="20"
-                            value={stepCount}
-                            onChange={(e) => handleStepCountChange(parseInt(e.target.value) || 0)}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                            placeholder="e.g. 3"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                            Steps serve as a reference/guide for task creation
-                        </p>
-                    </div>
-
-                    {stepCount > 0 && (
-                        <div className="space-y-3 pt-2">
-                            <label className="block text-sm font-medium text-gray-700">
-                                Step Names
+                    {/* STEPS */}
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                            <label className="text-sm font-medium">
+                                Steps (Optional)
                             </label>
-                            {Array.from({ length: stepCount }).map((_, index) => (
-                                <div key={index}>
-                                    <label className="block text-xs text-gray-600 mb-1">
-                                        Step {index + 1}
-                                    </label>
+                            <button
+                                type="button"
+                                onClick={handleAddStep}
+                                disabled={steps.length >= MAX_STEPS}
+                                className="text-sm text-blue-600 hover:underline disabled:opacity-50"
+                            >
+                                + Add Step
+                            </button>
+                        </div>
+
+                        {steps.map((step, index) => (
+                            <div
+                                key={index}
+                                className="p-3 bg-gray-50 rounded-lg space-y-2"
+                            >
+                                <div className="flex justify-between text-xs">
+                                    <span>Step {index + 1}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveStep(index)}
+                                        className="text-red-500 hover:underline"
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <input
                                         type="text"
                                         required
-                                        value={stepNames[index] || ''}
-                                        onChange={(e) => handleStepNameChange(index, e.target.value)}
-                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                        placeholder={`e.g. ${index === 0 ? 'Sketch' : index === 1 ? 'Line Art' : 'Base Color'}`}
+                                        value={step.step_name}
+                                        onChange={e =>
+                                            handleStepChange(
+                                                index,
+                                                'step_name',
+                                                e.target.value
+                                            )
+                                        }
+                                        placeholder="Step name"
+                                        className="px-4 py-2 border rounded-lg"
+                                    />
+
+                                    <input
+                                        type="text"
+                                        value={formatPrice(step.price)}
+                                        onChange={e =>
+                                            handleStepChange(
+                                                index,
+                                                'price',
+                                                e.target.value
+                                            )
+                                        }
+                                        placeholder="Harga (Rp)"
+                                        className="px-4 py-2 border rounded-lg"
                                     />
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                            </div>
+                        ))}
+                    </div>
 
+                    {/* ACTIONS */}
                     <div className="flex gap-3 pt-4">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="flex-1 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                            className="flex-1 border rounded-lg py-2"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 cursor-pointer"
+                            className="flex-1 bg-blue-600 text-white rounded-lg py-2 disabled:opacity-50"
                         >
-                            {loading ? 'Saving...' : (page ? 'Update' : 'Create')}
+                            {loading
+                                ? 'Saving...'
+                                : page
+                                    ? 'Update'
+                                    : 'Create'}
                         </button>
                     </div>
                 </form>

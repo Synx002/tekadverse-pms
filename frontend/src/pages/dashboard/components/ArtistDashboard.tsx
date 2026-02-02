@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { CheckSquare, Clock, AlertCircle, Calendar } from 'lucide-react';
+import { CheckSquare, Clock, AlertCircle, Calendar, Banknote } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Task } from '../../../types/task.types';
 import type { User } from '../../../types/user.types';
@@ -7,10 +7,11 @@ import type { User } from '../../../types/user.types';
 interface ArtistDashboardProps {
     user: User | null;
     tasks: Task[];
+    earnings: { total_earned: number; total_paid: number; total_pending: number } | null;
     loading: boolean;
 }
 
-export const ArtistDashboard = ({ user, tasks, loading }: ArtistDashboardProps) => {
+export const ArtistDashboard = ({ user, tasks, earnings, loading }: ArtistDashboardProps) => {
     const navigate = useNavigate();
 
     const myTasks = tasks.filter(t => t.assigned_to === user?.id);
@@ -18,7 +19,15 @@ export const ArtistDashboard = ({ user, tasks, loading }: ArtistDashboardProps) 
     const completedTasks = myTasks.filter(t => ['done', 'approved'].includes(t.status));
     const urgentTasks = activeTasks.filter(t => t.priority === 'urgent');
 
+    const totalEarned = earnings?.total_earned ?? 0;
     const stats = [
+        {
+            title: 'Uang Terkumpul',
+            value: `Rp ${totalEarned.toLocaleString('id-ID')}`,
+            icon: Banknote,
+            color: 'bg-emerald-500',
+            subtitle: 'Dari task yang selesai (done/approved)'
+        },
         {
             title: 'My Active Tasks',
             value: activeTasks.length,
@@ -60,13 +69,13 @@ export const ArtistDashboard = ({ user, tasks, loading }: ArtistDashboardProps) 
 
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {stats.map((stat, idx) => (
                     <div key={idx} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-gray-500">{stat.title}</p>
-                                <p className="text-2xl font-bold mt-1">{stat.value}</p>
+                                <p className="text-2xl font-bold mt-1 break-all">{stat.value}</p>
                                 <p className="text-xs text-gray-400 mt-1">{stat.subtitle}</p>
                             </div>
                             <div className={`${stat.color} p-3 rounded-lg text-white`}>

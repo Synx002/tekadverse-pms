@@ -7,6 +7,7 @@ export interface PageStep {
     page_id?: number;
     step_number: number;
     step_name: string;
+    price?: number;
     created_at?: string;
 }
 

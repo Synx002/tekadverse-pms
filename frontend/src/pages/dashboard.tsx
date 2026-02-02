@@ -3,6 +3,7 @@ import { useAuthStore } from '../store/authStore';
 import { projectsApi } from '../api/projects.api';
 import { tasksApi } from '../api/tasks.api';
 import { usersApi } from '../api/users.api';
+import { earningsApi } from '../api/earnings.api';
 import type { Task } from '../types/task.types';
 import type { Project } from '../types/project.types';
 import type { User } from '../types/user.types';
@@ -17,6 +18,8 @@ export const Dashboard = () => {
     const [projects, setProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [users, setUsers] = useState<User[]>([]);
+    const [artistEarnings, setArtistEarnings] = useState<{ total_earned: number; total_paid: number; total_pending: number } | null>(null);
+    const [payouts, setPayouts] = useState<{ payouts: Array<{ artist_id: number; artist_name: string; artist_email: string; total_pending: number }>; total_to_pay: number } | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -27,20 +30,34 @@ export const Dashboard = () => {
         try {
             setLoading(true);
 
-            // Load projects
             const projectsRes = await projectsApi.getAll();
             setProjects(projectsRes.data || []);
 
-            // Load tasks (backend already filters for artists)
             const tasksRes = await tasksApi.getAll();
             setTasks(tasksRes.data || []);
 
-            // Load users if admin
             if (user?.role === 'admin') {
                 const usersRes = await usersApi.getAll();
                 setUsers(usersRes.data || []);
             }
 
+            if (user?.role === 'artist') {
+                try {
+                    const earningsRes = await earningsApi.getMyEarnings();
+                    setArtistEarnings(earningsRes.data ?? null);
+                } catch {
+                    setArtistEarnings(null);
+                }
+            }
+
+            if (user?.role === 'manager' || user?.role === 'admin') {
+                try {
+                    const payoutsRes = await earningsApi.getPayouts();
+                    setPayouts(payoutsRes.data ?? null);
+                } catch {
+                    setPayouts(null);
+                }
+            }
         } catch (error) {
             console.error('Error loading dashboard:', error);
         } finally {
@@ -62,11 +79,11 @@ export const Dashboard = () => {
     const renderDashboard = () => {
         switch (user?.role) {
             case 'admin':
-                return <AdminDashboard projects={projects} tasks={tasks} users={users} loading={loading} />;
+                return <AdminDashboard projects={projects} tasks={tasks} users={users} payouts={payouts} loading={loading} />;
             case 'manager':
-                return <ManagerDashboard projects={projects} tasks={tasks} loading={loading} />;
+                return <ManagerDashboard projects={projects} tasks={tasks} payouts={payouts} loading={loading} />;
             case 'artist':
-                return <ArtistDashboard user={user} tasks={tasks} loading={loading} />;
+                return <ArtistDashboard user={user} tasks={tasks} earnings={artistEarnings} loading={loading} />;
             default:
                 return (
                     <div className="bg-red-50 p-4 rounded-lg border border-red-200 text-red-700">

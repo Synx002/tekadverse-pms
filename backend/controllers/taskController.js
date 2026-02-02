@@ -2,6 +2,32 @@ const db = require('../config/database');
 const { logActivity } = require('../utils/logger');
 const { sendEmail, emailTemplates } = require('../utils/emailService');
 
+// Create artist earning when task becomes done/approved
+async function createArtistEarningIfDone(taskId) {
+    try {
+        const [task] = await db.execute(
+            `SELECT t.assigned_to, t.step_id, t.status,
+                    COALESCE(ps.price, 0) as step_price
+             FROM tasks t
+             LEFT JOIN page_steps ps ON t.step_id = ps.id
+             WHERE t.id = ?`,
+            [taskId]
+        );
+        if (task.length === 0 || !task[0].assigned_to) return;
+        const t = task[0];
+        if (!['done', 'approved'].includes(t.status)) return;
+        const amount = parseFloat(t.step_price) || 0;
+        if (amount <= 0) return;
+
+        await db.execute(
+            `INSERT IGNORE INTO artist_earnings (task_id, artist_id, amount, status) VALUES (?, ?, ?, 'pending')`,
+            [taskId, t.assigned_to, amount]
+        );
+    } catch (e) {
+        console.error('createArtistEarningIfDone:', e.message);
+    }
+}
+
 // Get all tasks (with filters)
 exports.getAllTasks = async (req, res) => {
     try {
@@ -36,7 +62,7 @@ exports.getAllTasks = async (req, res) => {
              artist.email as assigned_to_email,
              artist.profile_picture as artist_profile,
              manager.name as assigned_by_name,
-             ps.step_number, ps.step_name
+             ps.step_number, ps.step_name, ps.price as step_price
       FROM tasks t
       LEFT JOIN pages pg ON t.page_id = pg.id
       LEFT JOIN page_steps ps ON t.step_id = ps.id
@@ -320,6 +346,10 @@ exports.updateTaskStatus = async (req, res) => {
             [status, started_at, completed_at, id]
         );
 
+        if (['done', 'approved'].includes(status)) {
+            await createArtistEarningIfDone(id);
+        }
+
         // Notify manager
         await db.execute(
             `INSERT INTO notifications (user_id, title, message, type, related_id, related_type)
@@ -420,6 +450,26 @@ exports.updateTask = async (req, res) => {
        priority = ?, deadline = ?, status = ? WHERE id = ?`,
             [step_id, title, description, assigned_to, priority, deadline, status, id]
         );
+
+        if (['done', 'approved'].includes(status)) {
+            await createArtistEarningIfDone(id);
+        }
+
+        // Notify artist if manager updates the task
+        if (req.user.role !== 'artist' && task.assigned_to) {
+            await db.execute(
+                `INSERT INTO notifications (user_id, title, message, type, related_id, related_type)
+        VALUES (?, ?, ?, ?, ?, ?)`,
+                [
+                    task.assigned_to,
+                    'Task Updated',
+                    `Your task "${title || task.title}" has been updated by ${req.user.name}${status ? ` to ${status}` : ''}`,
+                    'task_updated_by_manager',
+                    id,
+                    'task'
+                ]
+            );
+        }
 
         await logActivity(req.user.id, 'updated_task', 'task', id, existing[0], { title, status }, req.ip);
 
