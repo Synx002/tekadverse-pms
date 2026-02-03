@@ -1,5 +1,5 @@
 import type { Client } from "./client.types";
-import type { Page } from "./page.types";
+import type { Page, PageStep } from "./page.types";
 
 export type ProjectStatus = 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled';
 
@@ -15,10 +15,12 @@ export interface Project {
     client_name?: string;
     pages?: Page[];
     pages_count?: number;
+    steps?: PageStep[];
 }
 
 export interface CreateProjectData {
     client_id: number;
     name: string;
     status: ProjectStatus;
+    steps?: PageStep[];
 }

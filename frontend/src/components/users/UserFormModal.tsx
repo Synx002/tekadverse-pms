@@ -14,6 +14,9 @@ const userSchema = z.object({
     role: z.enum(['admin', 'manager', 'artist']),
     password: z.string().optional(),
     is_active: z.boolean(),
+    bank_name: z.string().optional().nullable(),
+    bank_account_number: z.string().optional().nullable(),
+    bank_account_holder: z.string().optional().nullable(),
 });
 
 type UserFormData = z.infer<typeof userSchema>;
@@ -44,6 +47,9 @@ export const UserFormModal = ({ user, onClose, onSuccess }: UserFormModalProps) 
             role: 'artist',
             is_active: true,
             password: '',
+            bank_name: '',
+            bank_account_number: '',
+            bank_account_holder: '',
         },
     });
 
@@ -55,6 +61,9 @@ export const UserFormModal = ({ user, onClose, onSuccess }: UserFormModalProps) 
                 role: user.role,
                 is_active: user.is_active,
                 password: '',
+                bank_name: user.bank_name || '',
+                bank_account_number: user.bank_account_number || '',
+                bank_account_holder: user.bank_account_holder || '',
             });
             if (user.profile_picture) {
                 setPreviewUrl(`${BASE_URL}/${user.profile_picture}`);
@@ -191,6 +200,33 @@ export const UserFormModal = ({ user, onClose, onSuccess }: UserFormModalProps) 
                                 placeholder="••••••••"
                             />
                             {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Bank Name</label>
+                            <input
+                                {...register('bank_name')}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                placeholder="BCA / Mandiri"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Account Number</label>
+                            <input
+                                {...register('bank_account_number')}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                placeholder="123456789"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Account Holder</label>
+                            <input
+                                {...register('bank_account_holder')}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                placeholder="Account Name"
+                            />
                         </div>
                     </div>
 

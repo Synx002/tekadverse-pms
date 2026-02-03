@@ -7,7 +7,7 @@ exports.getAllUsers = async (req, res) => {
     try {
         const { role, search } = req.query;
 
-        let query = 'SELECT id, name, email, role, profile_picture, is_active, created_at FROM users WHERE 1=1';
+        let query = 'SELECT id, name, email, role, profile_picture, is_active, bank_name, bank_account_number, bank_account_holder, created_at FROM users WHERE 1=1';
         const params = [];
 
         if (role) {
@@ -33,7 +33,7 @@ exports.getAllUsers = async (req, res) => {
 // Create new user (Admin only)
 exports.createUser = async (req, res) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { name, email, password, role, bank_name, bank_account_number, bank_account_holder } = req.body;
 
         if (!name || !email || !password || !role) {
             return res.status(400).json({ success: false, message: 'Please provide all required fields' });
@@ -53,12 +53,12 @@ exports.createUser = async (req, res) => {
 
         // Insert user
         const [result] = await db.execute(
-            'INSERT INTO users (name, email, password, role, profile_picture) VALUES (?, ?, ?, ?, ?)',
-            [name, email, hashedPassword, role, profile_picture]
+            'INSERT INTO users (name, email, password, role, profile_picture, bank_name, bank_account_number, bank_account_holder) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [name, email, hashedPassword, role, profile_picture, bank_name || null, bank_account_number || null, bank_account_holder || null]
         );
 
         // Log activity
-        await logActivity(req.user.id, 'created_user', 'user', result.insertId, null, { name, email, role }, req.ip);
+        await logActivity(req.user.id, 'created_user', 'user', result.insertId, null, { name, email, role, bank_name }, req.ip);
 
         res.status(201).json({
             success: true,
@@ -94,7 +94,12 @@ exports.getArtists = async (req, res) => {
 exports.updateUser = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, email, role, is_active, password } = req.body;
+        const { name, email, role, is_active, password, bank_name, bank_account_number, bank_account_holder } = req.body;
+
+        // Check if user is admin OR updating their own profile
+        if (req.user.role !== 'admin' && parseInt(id) !== req.user.id) {
+            return res.status(403).json({ success: false, message: 'Access denied. You can only update your own profile.' });
+        }
 
         const [existing] = await db.execute('SELECT * FROM users WHERE id = ?', [id]);
         if (existing.length === 0) {
@@ -102,17 +107,42 @@ exports.updateUser = async (req, res) => {
         }
 
         const oldValue = existing[0];
-        let profile_picture = oldValue.profile_picture;
 
+        // Check email uniqueness if changed
+        if (email && email !== oldValue.email) {
+            const [emailCheck] = await db.execute('SELECT id FROM users WHERE email = ? AND id != ?', [email, id]);
+            if (emailCheck.length > 0) {
+                return res.status(400).json({ success: false, message: 'Email already in use' });
+            }
+        }
+
+        let profile_picture = oldValue.profile_picture;
         if (req.file) {
             profile_picture = req.file.path.replace(/\\/g, '/');
         }
 
-        // Handle is_active from FormData (comes as string)
-        const isActive = is_active === 'true' || is_active === true;
+        // Only admins can change role and is_active status
+        let updatedRole = oldValue.role;
+        let updatedIsActive = oldValue.is_active;
 
-        let query = 'UPDATE users SET name = ?, email = ?, role = ?, is_active = ?, profile_picture = ?';
-        const params = [name, email, role, isActive, profile_picture];
+        if (req.user.role === 'admin') {
+            if (role) updatedRole = role;
+            if (is_active !== undefined) {
+                updatedIsActive = is_active === 'true' || is_active === true;
+            }
+        }
+
+        let query = 'UPDATE users SET name = ?, email = ?, role = ?, is_active = ?, profile_picture = ?, bank_name = ?, bank_account_number = ?, bank_account_holder = ?';
+        const params = [
+            name || oldValue.name,
+            email || oldValue.email,
+            updatedRole,
+            updatedIsActive,
+            profile_picture,
+            bank_name !== undefined ? bank_name : oldValue.bank_name,
+            bank_account_number !== undefined ? bank_account_number : oldValue.bank_account_number,
+            bank_account_holder !== undefined ? bank_account_holder : oldValue.bank_account_holder
+        ];
 
         if (password && password.trim() !== '') {
             const hashedPassword = await bcrypt.hash(password, 10);
@@ -125,7 +155,7 @@ exports.updateUser = async (req, res) => {
 
         await db.execute(query, params);
 
-        await logActivity(req.user.id, 'updated_user', 'user', id, oldValue, { name, email, role, is_active: isActive }, req.ip);
+        await logActivity(req.user.id, 'updated_user', 'user', id, oldValue, { name, email, role: updatedRole, is_active: updatedIsActive }, req.ip);
 
         res.json({ success: true, message: 'User updated successfully' });
     } catch (error) {
@@ -190,6 +220,25 @@ exports.uploadProfilePicture = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// Get current user profile
+exports.getProfile = async (req, res) => {
+    try {
+        const [rows] = await db.execute(
+            'SELECT id, name, email, role, profile_picture, is_active, bank_name, bank_account_number, bank_account_holder, created_at FROM users WHERE id = ?',
+            [req.user.id]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        res.json({ success: true, data: rows[0] });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 

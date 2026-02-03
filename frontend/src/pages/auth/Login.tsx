@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { LogIn } from 'lucide-react';
+import Logo from '../../assets/logo.svg';
 import { authApi } from '../../api/auth.api';
 import { useAuthStore } from '../../store/authStore';
 import type { LoginCredentials } from '../../types/auth.types';
@@ -50,11 +50,10 @@ export const Login = () => {
                 <div className="bg-white rounded-2xl shadow-xl p-8">
                     {/* Header */}
                     <div className="text-center mb-8">
-                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
-                            <LogIn className="w-8 h-8 text-blue-600" />
+                        <div className="inline-flex items-center justify-center w-24 h-24">
+                            <img src={Logo} alt="Logo" className="w-full h-full" />
                         </div>
-                        <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
-                        <p className="text-gray-600 mt-2">Sign in to Tekadverse PMS</p>
+                        <p className="text-sm text-gray-600 mt-1">Sign in to Tekadverse PMS</p>
                     </div>
 
                     {/* Form */}
@@ -99,12 +98,12 @@ export const Login = () => {
                     </form>
 
                     {/* Register link */}
-                    <p className="mt-6 text-center text-sm text-gray-600">
+                    {/* <p className="mt-6 text-center text-sm text-gray-600">
                         Don't have an account?{' '}
                         <Link to="/register" className="text-blue-600 hover:text-blue-700 font-medium">
                             Register here
                         </Link>
-                    </p>
+                    </p> */}
                 </div>
             </div>
         </div>

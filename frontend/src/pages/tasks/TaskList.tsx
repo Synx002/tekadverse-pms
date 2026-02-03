@@ -77,15 +77,17 @@ export const TaskList = ({ tasks }: TaskListProps) => {
                                 className="hover:bg-gray-50 cursor-pointer transition-colors"
                             >
                                 <td className="px-6 py-4">
-                                    <div>
-                                        <p className="font-medium text-gray-900">{task.title}</p>
+                                    <div className="flex flex-col">
+                                        <p className="text-sm font-medium text-gray-900">
+                                            {task.step_name || 'Untitled Task'}
+                                        </p>
                                         {task.description && (
-                                            <p className="text-sm text-gray-500 line-clamp-1 mt-1">
+                                            <p className="text-xs text-gray-500 line-clamp-1">
                                                 {task.description}
                                             </p>
                                         )}
                                         {(task.project?.name || task.project_name) && (
-                                            <p className="text-xs text-gray-400 mt-1">
+                                            <p className="text-[10px] text-gray-400">
                                                 {task.project?.name || task.project_name}
                                             </p>
                                         )}

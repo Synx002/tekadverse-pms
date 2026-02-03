@@ -13,7 +13,6 @@ import type { User } from '../../types/user.types';
 import { useAuthStore } from '../../store/authStore';
 
 const taskSchemaBase = z.object({
-    title: z.string().min(3, 'Title must be at least 3 characters'),
     description: z.string().optional().or(z.literal('')),
     page_id: z.number().min(1, 'Please select a page'),
     step_id: z.number().optional(),
@@ -59,7 +58,6 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
     } = useForm<TaskFormData>({
         resolver: zodResolver(taskSchema),
         defaultValues: {
-            title: '',
             description: '',
             page_id: pageId || 0,
             step_id: 0,
@@ -77,7 +75,6 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
         loadData();
         if (task) {
             reset({
-                title: task.title,
                 description: task.description || '',
                 page_id: task.page_id,
                 step_id: task.step_id || 0,
@@ -172,16 +169,7 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                 </div>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-5">
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">Task Title</label>
-                        <input
-                            {...register('title')}
-                            disabled={isArtist}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
-                            placeholder="Sketch"
-                        />
-                        {errors.title && <p className="text-xs text-red-500">{errors.title.message}</p>}
-                    </div>
+
 
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-700">Description</label>
@@ -218,7 +206,7 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                             {errors.page_id && <p className="text-xs text-red-500">{errors.page_id.message}</p>}
                         </div>
 
-                        {!isArtist && currentPageId > 0 && (
+                        {!isArtist && (
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700">Step</label>
                                 <select
@@ -233,7 +221,7 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                                         </option>
                                     ))}
                                 </select>
-                                {availableSteps.length === 0 && currentPageId > 0 && (
+                                {availableSteps.length === 0 && (
                                     <p className="text-xs text-amber-600">
                                         No steps available. Ensure the page has steps defined, and that not all steps are already assigned.
                                     </p>

@@ -98,11 +98,21 @@ exports.getProjectById = async (req, res) => {
             [id]
         );
 
+        // Get project steps
+        const [steps] = await db.execute(
+            `SELECT id, project_id, step_number, step_name, price 
+             FROM project_steps 
+             WHERE project_id = ? 
+             ORDER BY step_number ASC`,
+            [id]
+        );
+
         res.json({
             success: true,
             data: {
                 ...projects[0],
-                pages
+                pages,
+                steps
             }
         });
     } catch (error) {
@@ -113,54 +123,100 @@ exports.getProjectById = async (req, res) => {
 
 // Create project
 exports.createProject = async (req, res) => {
+    const connection = await db.getConnection();
     try {
-        const { client_id, name, status } = req.body;
+        const { client_id, name, status, steps } = req.body;
 
         if (!client_id || !name) {
             return res.status(400).json({ message: 'Client and project name are required' });
         }
 
-        const [result] = await db.execute(
+        await connection.beginTransaction();
+
+        const [result] = await connection.execute(
             `INSERT INTO projects (client_id, name, status, created_by)
-       VALUES (?, ?, ?, ?)`,
+             VALUES (?, ?, ?, ?)`,
             [client_id, name, status, req.user.id]
         );
 
-        await logActivity(req.user.id, 'created_project', 'project', result.insertId, null, { name, client_id }, req.ip);
+        const projectId = result.insertId;
+
+        // Insert steps if provided
+        if (steps && Array.isArray(steps) && steps.length > 0) {
+            for (const step of steps) {
+                const price = step.price != null ? parseFloat(step.price) : 0;
+                await connection.execute(
+                    `INSERT INTO project_steps (project_id, step_number, step_name, price)
+                     VALUES (?, ?, ?, ?)`,
+                    [projectId, step.step_number, step.step_name, price]
+                );
+            }
+        }
+
+        await connection.commit();
+
+        await logActivity(req.user.id, 'created_project', 'project', projectId, null, { name, client_id, steps_count: steps?.length || 0 }, req.ip);
 
         res.status(201).json({
             success: true,
             message: 'Project created successfully',
-            data: { id: result.insertId }
+            data: { id: projectId }
         });
     } catch (error) {
+        await connection.rollback();
         console.error(error);
         res.status(500).json({ message: 'Server error' });
+    } finally {
+        connection.release();
     }
 };
 
 // Update project
 exports.updateProject = async (req, res) => {
+    const connection = await db.getConnection();
     try {
         const { id } = req.params;
-        const { name, status } = req.body;
+        const { name, status, steps } = req.body;
 
-        const [existing] = await db.execute('SELECT * FROM projects WHERE id = ?', [id]);
+        const [existing] = await connection.execute('SELECT * FROM projects WHERE id = ?', [id]);
         if (existing.length === 0) {
             return res.status(404).json({ message: 'Project not found' });
         }
 
-        await db.execute(
+        await connection.beginTransaction();
+
+        await connection.execute(
             `UPDATE projects SET name = ?, status = ? WHERE id = ?`,
             [name, status, id]
         );
 
-        await logActivity(req.user.id, 'updated_project', 'project', id, existing[0], { name, status }, req.ip);
+        // Update steps if provided
+        if (steps && Array.isArray(steps)) {
+            // Approach: Delete existing steps and re-insert 
+            // Better would be to sync by ID, but replacing is simpler and works for fixed pipelines
+            await connection.execute('DELETE FROM project_steps WHERE project_id = ?', [id]);
+
+            for (const step of steps) {
+                const price = step.price != null ? parseFloat(step.price) : 0;
+                await connection.execute(
+                    `INSERT INTO project_steps (project_id, step_number, step_name, price)
+                     VALUES (?, ?, ?, ?)`,
+                    [id, step.step_number, step.step_name, price]
+                );
+            }
+        }
+
+        await connection.commit();
+
+        await logActivity(req.user.id, 'updated_project', 'project', id, existing[0], { name, status, steps_count: steps?.length }, req.ip);
 
         res.json({ success: true, message: 'Project updated successfully' });
     } catch (error) {
+        await connection.rollback();
         console.error(error);
         res.status(500).json({ message: 'Server error' });
+    } finally {
+        connection.release();
     }
 };
 

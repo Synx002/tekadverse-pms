@@ -15,6 +15,9 @@ import { Tasks } from '../pages/tasks/Tasks';
 import { TaskDetail } from '../pages/tasks/TaskDetail';
 import { Clients } from '../pages/clients/Clients';
 import { Users } from '../pages/users/Users';
+import { Profile } from '../pages/users/Profile';
+import { Finance } from '../pages/finance/Finance';
+import { Notifications } from '../pages/notifications/Notifications';
 import { NotFound } from '../pages/NotFound';
 
 export const router = createBrowserRouter([
@@ -73,6 +76,18 @@ export const router = createBrowserRouter([
                         <Users />
                     </ProtectedRoute>
                 ),
+            },
+            {
+                path: 'profile',
+                element: <Profile />,
+            },
+            {
+                path: 'finance',
+                element: <Finance />,
+            },
+            {
+                path: 'notifications',
+                element: <Notifications />,
             },
         ],
     },

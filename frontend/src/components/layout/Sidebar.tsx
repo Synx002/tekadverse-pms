@@ -5,7 +5,7 @@ import {
     CheckSquare,
     Users,
     Building2,
-    Menu,
+    Banknote,
     X
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
@@ -20,6 +20,7 @@ export const Sidebar = () => {
         { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'manager', 'artist'] },
         { name: 'Projects', href: '/projects', icon: FolderKanban, roles: ['admin', 'manager', 'artist'] },
         { name: 'Tasks', href: '/tasks', icon: CheckSquare, roles: ['admin', 'manager', 'artist'] },
+        { name: 'Finance', href: '/finance', icon: Banknote, roles: ['admin', 'manager', 'artist'] },
         { name: 'Clients', href: '/clients', icon: Building2, roles: ['admin', 'manager'] },
         { name: 'Users', href: '/users', icon: Users, roles: ['admin'] },
     ];

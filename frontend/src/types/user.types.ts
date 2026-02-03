@@ -8,6 +8,9 @@ export interface User {
     role: UserRole;
     profile_picture: string | null;
     is_active: boolean;
+    bank_name?: string | null;
+    bank_account_number?: string | null;
+    bank_account_holder?: string | null;
     created_at: string;
     updated_at: string;
 }

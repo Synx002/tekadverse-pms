@@ -130,7 +130,6 @@ export const TaskDetail = () => {
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
                             <div className="flex-1">
                                 <p className="text-sm font-medium text-blue-600 mb-1">{task.project?.name || task.project_name}</p>
-                                <h1 className="text-2xl font-bold text-gray-900 mb-3">{task.title}</h1>
                                 <div className="flex flex-wrap items-center gap-2">
                                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(task.status)}`}>
                                         {task.status.replace('_', ' ')}

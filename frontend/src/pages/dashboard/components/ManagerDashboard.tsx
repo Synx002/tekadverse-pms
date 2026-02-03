@@ -1,15 +1,23 @@
 import { useNavigate } from 'react-router-dom';
-import { FolderKanban, ClipboardCheck, AlertCircle, Users } from 'lucide-react';
+import { FolderKanban, ClipboardCheck, AlertCircle, Users, Banknote } from 'lucide-react';
 import type { Task } from '../../../types/task.types';
 import type { Project } from '../../../types/project.types';
+
+interface PayoutItem {
+    artist_id: number;
+    artist_name: string;
+    artist_email: string;
+    total_pending: number;
+}
 
 interface ManagerDashboardProps {
     projects: Project[];
     tasks: Task[];
+    payouts: { payouts: PayoutItem[]; total_to_pay: number } | null;
     loading: boolean;
 }
 
-export const ManagerDashboard = ({ projects, tasks, loading }: ManagerDashboardProps) => {
+export const ManagerDashboard = ({ projects, tasks, payouts, loading }: ManagerDashboardProps) => {
     const navigate = useNavigate();
 
     const activeProjects = projects.filter(p => p.status === 'active');
@@ -94,7 +102,7 @@ export const ManagerDashboard = ({ projects, tasks, loading }: ManagerDashboardP
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <p className="text-xs font-medium text-gray-500 mb-1">{task.project_name}</p>
-                                        <h3 className="font-medium text-gray-900">{task.title}</h3>
+                                        <h3 className="font-medium text-gray-900">{task.step_name || task.description}</h3>
                                         <p className="text-xs text-gray-400 mt-1">Artist: {task.assigned_to_name}</p>
                                     </div>
                                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getStatusColor(task.status)}`}>
@@ -111,17 +119,59 @@ export const ManagerDashboard = ({ projects, tasks, loading }: ManagerDashboardP
                     </div>
                 </div>
 
-                {/* Team Workload / Performance Placeholder */}
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                    <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                        <Users size={18} /> Team Overview
-                    </h2>
-                    <div className="space-y-4">
-                        <p className="text-sm text-gray-600">You are managing {activeProjects.length} active projects with {tasks.length} total tasks.</p>
-                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                            <h4 className="text-sm font-medium text-blue-900 mb-1">Manager Tip</h4>
-                            <p className="text-xs text-blue-700">Check the review queue regularly to keep the workflow moving. Approved tasks move closer to "Done".</p>
-                        </div>
+                {/* Pembayaran ke Artist */}
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-amber-50">
+                        <h2 className="font-semibold text-amber-900 flex items-center gap-2">
+                            <Banknote size={18} /> Pembayaran ke Artist
+                        </h2>
+                        {payouts && payouts.total_to_pay > 0 && (
+                            <span className="text-sm font-bold text-amber-800">
+                                Total: Rp {payouts.total_to_pay.toLocaleString('id-ID')}
+                            </span>
+                        )}
+                    </div>
+                    <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                        {payouts && payouts.payouts.length > 0 ? (
+                            <table className="w-full text-sm">
+                                <thead className="bg-gray-50 sticky top-0">
+                                    <tr>
+                                        <th className="text-left px-4 py-3 font-medium text-gray-700">Artist</th>
+                                        <th className="text-left px-4 py-3 font-medium text-gray-700">Email</th>
+                                        <th className="text-right px-4 py-3 font-medium text-gray-700">Jumlah (Rp)</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {payouts.payouts.map((p) => (
+                                        <tr key={p.artist_id} className="hover:bg-gray-50">
+                                            <td className="px-4 py-3 font-medium text-gray-900">{p.artist_name}</td>
+                                            <td className="px-4 py-3 text-gray-600">{p.artist_email}</td>
+                                            <td className="px-4 py-3 text-right font-semibold text-amber-700">
+                                                Rp {p.total_pending.toLocaleString('id-ID')}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        ) : (
+                            <div className="p-8 text-center text-gray-500 italic">
+                                Tidak ada pembayaran tertunda. Uang akan muncul saat task status Done/Approved.
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Team Overview */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <Users size={18} /> Team Overview
+                </h2>
+                <div className="space-y-4">
+                    <p className="text-sm text-gray-600">You are managing {activeProjects.length} active projects with {tasks.length} total tasks.</p>
+                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                        <h4 className="text-sm font-medium text-blue-900 mb-1">Manager Tip</h4>
+                        <p className="text-xs text-blue-700">Check the review queue regularly to keep the workflow moving. Approved tasks move closer to "Done". When a task is Done, the artist earns the step price.</p>
                     </div>
                 </div>
             </div>

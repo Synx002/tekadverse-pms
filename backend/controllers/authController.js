@@ -55,7 +55,7 @@ exports.login = async (req, res) => {
 
         // Get user
         const [users] = await db.execute(
-            'SELECT id, name, email, password, role, profile_picture, is_active FROM users WHERE email = ?',
+            'SELECT id, name, email, password, role, profile_picture, is_active, bank_name, bank_account_number, bank_account_holder FROM users WHERE email = ?',
             [email]
         );
 
@@ -77,7 +77,7 @@ exports.login = async (req, res) => {
 
         // Create token
         const token = jwt.sign(
-            { id: user.id, role: user.role },
+            { id: user.id, name: user.name, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: process.env.JWT_EXPIRE || '7d' }
         );
@@ -95,7 +95,10 @@ exports.login = async (req, res) => {
                     name: user.name,
                     email: user.email,
                     role: user.role,
-                    profile_picture: user.profile_picture
+                    profile_picture: user.profile_picture,
+                    bank_name: user.bank_name,
+                    bank_account_number: user.bank_account_number,
+                    bank_account_holder: user.bank_account_holder
                 }
             }
         });
@@ -109,7 +112,7 @@ exports.login = async (req, res) => {
 exports.getMe = async (req, res) => {
     try {
         const [users] = await db.execute(
-            'SELECT id, name, email, role, profile_picture, created_at FROM users WHERE id = ?',
+            'SELECT id, name, email, role, profile_picture, created_at, bank_name, bank_account_number, bank_account_holder FROM users WHERE id = ?',
             [req.user.id]
         );
 

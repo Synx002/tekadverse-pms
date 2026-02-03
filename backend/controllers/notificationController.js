@@ -16,10 +16,10 @@ exports.getMyNotifications = async (req, res) => {
         query += ' ORDER BY created_at DESC LIMIT 50';
 
         const [notifications] = await db.execute(query, params);
-        res.json(notifications);
+        res.json({ success: true, data: notifications });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 
@@ -31,10 +31,10 @@ exports.getUnreadCount = async (req, res) => {
             [req.user.id]
         );
 
-        res.json({ count: result[0].count });
+        res.json({ success: true, data: { count: result[0].count } });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 
@@ -48,10 +48,10 @@ exports.markAsRead = async (req, res) => {
             [id, req.user.id]
         );
 
-        res.json({ message: 'Notification marked as read' });
+        res.json({ success: true, message: 'Notification marked as read' });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 
@@ -63,10 +63,10 @@ exports.markAllAsRead = async (req, res) => {
             [req.user.id]
         );
 
-        res.json({ message: 'All notifications marked as read' });
+        res.json({ success: true, message: 'All notifications marked as read' });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 
@@ -80,10 +80,27 @@ exports.deleteNotification = async (req, res) => {
             [id, req.user.id]
         );
 
-        res.json({ message: 'Notification deleted' });
+        res.json({ success: true, message: 'Notification deleted' });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
+// Create a new notification
+exports.createNotification = async (userId, type, message, relatedType = null, relatedId = null) => {
+    try {
+        // Use type as title if needed, or translate it
+        // const title = type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+
+        await db.execute(
+            'INSERT INTO notifications (user_id, message, type, related_type, related_id) VALUES (?, ?, ?, ?, ?)',
+            [userId, message, type, relatedType, relatedId]
+        );
+        return true;
+    } catch (error) {
+        console.error('Error creating notification:', error);
+        return false;
     }
 };
 
