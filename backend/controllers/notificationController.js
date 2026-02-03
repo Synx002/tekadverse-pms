@@ -91,11 +91,11 @@ exports.deleteNotification = async (req, res) => {
 exports.createNotification = async (userId, type, message, relatedType = null, relatedId = null) => {
     try {
         // Use type as title if needed, or translate it
-        const title = type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        // const title = type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 
         await db.execute(
-            'INSERT INTO notifications (user_id, title, message, type, related_type, related_id) VALUES (?, ?, ?, ?, ?, ?)',
-            [userId, title, message, type, relatedType, relatedId]
+            'INSERT INTO notifications (user_id, message, type, related_type, related_id) VALUES (?, ?, ?, ?, ?)',
+            [userId, message, type, relatedType, relatedId]
         );
         return true;
     } catch (error) {

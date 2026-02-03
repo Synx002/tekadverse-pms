@@ -17,6 +17,7 @@ import { Clients } from '../pages/clients/Clients';
 import { Users } from '../pages/users/Users';
 import { Profile } from '../pages/users/Profile';
 import { Finance } from '../pages/finance/Finance';
+import { Notifications } from '../pages/notifications/Notifications';
 import { NotFound } from '../pages/NotFound';
 
 export const router = createBrowserRouter([
@@ -83,6 +84,10 @@ export const router = createBrowserRouter([
             {
                 path: 'finance',
                 element: <Finance />,
+            },
+            {
+                path: 'notifications',
+                element: <Notifications />,
             },
         ],
     },

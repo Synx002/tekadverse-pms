@@ -94,9 +94,9 @@ export const ProjectDetail = () => {
         return null;
     }
 
-    const totalTasks = pages.reduce((sum, p) => sum + (p.tasks_count || 0), 0);
-    const completedTasksCount = pages.reduce((sum, p) => sum + (p.tasks_completed || 0), 0);
-    const progress = totalTasks > 0 ? (completedTasksCount / totalTasks) * 100 : 0;
+    const totalTasks = pages.reduce((sum, p) => sum + Number(p.tasks_count || 0), 0);
+    const completedTasksCount = pages.reduce((sum, p) => sum + Number(p.tasks_completed || 0), 0);
+    const progress = totalTasks > 0 ? Math.min(100, (completedTasksCount / totalTasks) * 100) : 0;
 
     return (
         <div className="space-y-6">

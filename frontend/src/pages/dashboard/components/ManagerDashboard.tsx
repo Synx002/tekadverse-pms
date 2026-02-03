@@ -102,7 +102,7 @@ export const ManagerDashboard = ({ projects, tasks, payouts, loading }: ManagerD
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <p className="text-xs font-medium text-gray-500 mb-1">{task.project_name}</p>
-                                        <h3 className="font-medium text-gray-900">{task.title}</h3>
+                                        <h3 className="font-medium text-gray-900">{task.step_name || task.description}</h3>
                                         <p className="text-xs text-gray-400 mt-1">Artist: {task.assigned_to_name}</p>
                                     </div>
                                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getStatusColor(task.status)}`}>

@@ -44,42 +44,40 @@ exports.getAllPages = async (req, res) => {
     }
 };
 
-// Get available steps for a page (steps not yet assigned, or assigned to excludeTaskId when editing)
+// Get available steps for a page (steps from project not yet assigned for this specific page)
 exports.getAvailableSteps = async (req, res) => {
     try {
-        const { id } = req.params;
+        const { id } = req.params; // Page ID
         const excludeTaskId = req.query.exclude_task_id ? parseInt(req.query.exclude_task_id) : null;
 
-        let allSteps = [];
-        try {
-            const [steps] = await db.execute(
-                `SELECT ps.id, ps.page_id, ps.step_number, ps.step_name, ps.price
-                 FROM page_steps ps
-                 WHERE ps.page_id = ?
-                 ORDER BY ps.step_number ASC`,
-                [id]
-            );
-            allSteps = steps;
-        } catch {
-            return res.json({ success: true, data: [] });
+        // Get project_id from page
+        const [page] = await db.execute('SELECT project_id FROM pages WHERE id = ?', [id]);
+        if (page.length === 0) {
+            return res.status(404).json({ success: false, message: 'Page not found' });
         }
+        const projectId = page[0].project_id;
 
-        let usedSteps = [];
-        try {
-            const [used] = await db.execute(
-                `SELECT step_id, id as task_id FROM tasks WHERE page_id = ? AND step_id IS NOT NULL`,
-                [id]
-            );
-            usedSteps = used;
-        } catch {
-            // step_id column may not exist yet
-        }
+        // Get all steps from project
+        const [projectSteps] = await db.execute(
+            `SELECT id, project_id, step_number, step_name, price
+             FROM project_steps
+             WHERE project_id = ?
+             ORDER BY step_number ASC`,
+            [projectId]
+        );
+
+        // Get steps already used for tasks on this SPECIFIC page
+        const [usedTasks] = await db.execute(
+            `SELECT step_id, id as task_id FROM tasks WHERE page_id = ? AND step_id IS NOT NULL`,
+            [id]
+        );
 
         const usedByOtherTask = (stepId) => {
-            const used = usedSteps.find(r => r.step_id === stepId);
+            const used = usedTasks.find(r => r.step_id === stepId);
             return used && (!excludeTaskId || used.task_id !== excludeTaskId);
         };
-        const result = allSteps.filter(s => !usedByOtherTask(s.id));
+
+        const result = projectSteps.filter(s => !usedByOtherTask(s.id));
 
         res.json({ success: true, data: result });
     } catch (error) {
@@ -118,54 +116,24 @@ exports.getPageById = async (req, res) => {
             }
         }
 
-        // Get steps (page_steps table might not exist if migration not run)
-        let steps = [];
-        try {
-            const [stepsResult] = await db.execute(
-                `SELECT id, page_id, step_number, step_name, price, created_at
-                 FROM page_steps WHERE page_id = ? ORDER BY step_number ASC`,
-                [id]
-            );
-            steps = stepsResult.map(s => ({ ...s, price: s.price ?? 0 }));
-        } catch {
-            try {
-                const [stepsResult] = await db.execute(
-                    `SELECT id, page_id, step_number, step_name, created_at
-                     FROM page_steps WHERE page_id = ? ORDER BY step_number ASC`,
-                    [id]
-                );
-                steps = stepsResult.map(s => ({ ...s, price: 0 }));
-            } catch {
-                // page_steps table may not exist
-            }
-        }
+        // Get steps from project
+        const [steps] = await db.execute(
+            `SELECT id, project_id, step_number, step_name, price, created_at
+             FROM project_steps WHERE project_id = ? ORDER BY step_number ASC`,
+            [pages[0].project_id]
+        );
 
-        // Get tasks (with step info if step_id column exists)
-        let tasks;
-        try {
-            const [tasksResult] = await db.execute(
-                `SELECT t.*, u.name as assigned_to_name, u.profile_picture,
-                        ps.step_number, ps.step_name, ps.price as step_price
-                 FROM tasks t
-                 LEFT JOIN users u ON t.assigned_to = u.id
-                 LEFT JOIN page_steps ps ON t.step_id = ps.id
-                 WHERE t.page_id = ?
-                 ORDER BY COALESCE(ps.step_number, 999), t.created_at ASC`,
-                [id]
-            );
-            tasks = tasksResult;
-        } catch {
-            // Fallback when step_id column doesn't exist (migration not run yet)
-            const [tasksResult] = await db.execute(
-                `SELECT t.*, u.name as assigned_to_name, u.profile_picture
-                 FROM tasks t
-                 LEFT JOIN users u ON t.assigned_to = u.id
-                 WHERE t.page_id = ?
-                 ORDER BY t.created_at DESC`,
-                [id]
-            );
-            tasks = tasksResult;
-        }
+        // Get tasks
+        const [tasks] = await db.execute(
+            `SELECT t.*, u.name as assigned_to_name, u.profile_picture,
+                    ps.step_number, ps.step_name, ps.price as step_price
+             FROM tasks t
+             LEFT JOIN users u ON t.assigned_to = u.id
+             LEFT JOIN project_steps ps ON t.step_id = ps.id
+             WHERE t.page_id = ?
+             ORDER BY COALESCE(ps.step_number, 999), t.created_at ASC`,
+            [id]
+        );
 
         res.json({
             success: true,
@@ -235,19 +203,6 @@ exports.createPage = async (req, res) => {
 
         const pageId = result.insertId;
 
-        // Insert steps if provided (hanya sebagai referensi, tidak auto-create tasks)
-        if (steps && Array.isArray(steps) && steps.length > 0) {
-            for (const step of steps) {
-                const price = step.price != null ? parseFloat(step.price) : 0;
-                await connection.execute(
-                    `INSERT INTO page_steps (page_id, step_number, step_name, price)
-                     VALUES (?, ?, ?, ?)`,
-                    [pageId, step.step_number, step.step_name, price]
-                );
-            }
-            console.log(`Inserted ${steps.length} steps as reference (no auto-tasks created)`);
-        }
-
         await connection.commit();
 
         // Log activity (dengan error handling terpisah)
@@ -258,7 +213,7 @@ exports.createPage = async (req, res) => {
                 'page',
                 pageId,
                 null,
-                { name, project_id, client_id, steps_count: steps?.length || 0 },
+                { name, project_id, client_id },
                 req.ip
             );
         } catch (logError) {
@@ -306,25 +261,6 @@ exports.updatePage = async (req, res) => {
                 `UPDATE pages SET name = ? WHERE id = ?`,
                 [name, id]
             );
-        }
-
-        // Update steps if provided
-        if (steps && Array.isArray(steps)) {
-            for (const step of steps) {
-                const price = step.price != null ? parseFloat(step.price) : 0;
-                if (step.id) {
-                    await connection.execute(
-                        `UPDATE page_steps SET step_name = ?, price = ? WHERE id = ? AND page_id = ?`,
-                        [step.step_name, price, step.id, id]
-                    );
-                } else {
-                    await connection.execute(
-                        `INSERT INTO page_steps (page_id, step_number, step_name, price)
-                         VALUES (?, ?, ?, ?)`,
-                        [id, step.step_number, step.step_name, price]
-                    );
-                }
-            }
         }
 
         await connection.commit();

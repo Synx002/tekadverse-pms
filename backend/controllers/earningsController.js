@@ -47,3 +47,34 @@ exports.getPayouts = async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 };
+
+// Get global financial stats for admin/manager
+exports.getGlobalFinanceStats = async (req, res) => {
+    try {
+        const [stats] = await db.execute(
+            `SELECT 
+                COALESCE(SUM(amount), 0) as total_earned,
+                COALESCE(SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END), 0) as total_paid,
+                COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) as total_pending
+             FROM artist_earnings`
+        );
+
+        const [payouts] = await db.execute(
+            `SELECT COUNT(*) as pending_requests, COALESCE(SUM(amount), 0) as pending_amount 
+             FROM withdrawals 
+             WHERE status = 'pending'`
+        );
+
+        res.json({
+            success: true,
+            data: {
+                ...stats[0],
+                pending_requests: payouts[0].pending_requests,
+                pending_requests_amount: payouts[0].pending_amount
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};

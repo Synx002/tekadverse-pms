@@ -33,12 +33,14 @@ exports.addComment = async (req, res) => {
 
         // Get task details
         const [tasks] = await db.execute(
-            `SELECT t.title, t.assigned_to, t.assigned_by,
+            `SELECT t.description, t.assigned_to, t.assigned_by,
               artist.name as artist_name, artist.email as artist_email,
-              manager.name as manager_name, manager.email as manager_email
+              manager.name as manager_name, manager.email as manager_email,
+              ps.step_name
        FROM tasks t
        LEFT JOIN users artist ON t.assigned_to = artist.id
        LEFT JOIN users manager ON t.assigned_by = manager.id
+       LEFT JOIN project_steps ps ON t.step_id = ps.id
        WHERE t.id = ?`,
             [task_id]
         );
@@ -74,12 +76,11 @@ exports.addComment = async (req, res) => {
 
         // Create notification
         await db.execute(
-            `INSERT INTO notifications (user_id, title, message, type, related_id, related_type)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO notifications (user_id, message, type, related_id, related_type)
+       VALUES (?, ?, ?, ?, ?)`,
             [
                 notifyUserId,
-                'New Comment',
-                `${commenter[0].name} commented on task "${task.title}"`,
+                `${commenter[0].name} commented on task "${task.step_name || task.description}"`,
                 'comment_added',
                 task_id,
                 'task'
@@ -91,7 +92,7 @@ exports.addComment = async (req, res) => {
             const emailHtml = emailTemplates.newComment(
                 notifyUserName,
                 commenter[0].name,
-                task.title,
+                task.step_name || task.description,
                 comment
             );
             await sendEmail(notifyUserEmail, 'New Comment on Task - Tekadverse PMS', emailHtml);

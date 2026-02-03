@@ -82,10 +82,8 @@ export const NotificationDropdown = () => {
         // Simple routing based on type
         if (notification.related_type === 'task') {
             navigate(`/tasks/${notification.related_id}`);
-        } else if (notification.type === 'withdrawal_request') {
-            navigate('/withdrawals');
-        } else if (notification.type === 'withdrawal_update') {
-            navigate('/earnings');
+        } else if (notification.type === 'withdrawal_request' || notification.type === 'withdrawal_update') {
+            navigate('/finance');
         }
     };
 
@@ -143,10 +141,12 @@ export const NotificationDropdown = () => {
                                         <div className="flex gap-3">
                                             <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${!notification.is_read ? 'bg-blue-600' : 'bg-transparent'}`} />
                                             <div className="flex-1 min-w-0">
-                                                <p className={`text-sm ${!notification.is_read ? 'font-bold text-gray-900' : 'text-gray-700'}`}>
-                                                    {notification.title}
-                                                </p>
-                                                <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                                {notification.title && (
+                                                    <p className={`text-sm ${!notification.is_read ? 'font-bold text-gray-900' : 'text-gray-700'}`}>
+                                                        {notification.title}
+                                                    </p>
+                                                )}
+                                                <p className={`text-xs text-gray-600 mt-1 line-clamp-2 ${!notification.title && !notification.is_read ? 'font-bold text-gray-900 text-sm' : ''}`}>
                                                     {notification.message}
                                                 </p>
                                                 <p className="text-[10px] text-gray-400 mt-2">

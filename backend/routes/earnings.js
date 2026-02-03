@@ -5,5 +5,6 @@ const { auth, authorize } = require('../middleware/auth');
 
 router.get('/my-earnings', auth, authorize('artist'), earningsController.getMyEarnings);
 router.get('/payouts', auth, authorize('manager', 'admin'), earningsController.getPayouts);
+router.get('/global-stats', auth, authorize('manager', 'admin'), earningsController.getGlobalFinanceStats);
 
 module.exports = router;

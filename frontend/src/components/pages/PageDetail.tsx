@@ -145,7 +145,6 @@ export const PageDetail: React.FC = () => {
                                         className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
                                     >
                                         <div className="flex items-center justify-between mb-2">
-                                            <h3 className="font-medium text-gray-900">{task.title}</h3>
                                             {(task.step_number != null || task.step_name) && (
                                                 <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-medium">
                                                     Step {task.step_number ?? ''} {task.step_name ? `- ${task.step_name}` : ''}

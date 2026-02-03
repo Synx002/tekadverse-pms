@@ -106,7 +106,7 @@ export const ArtistDashboard = ({ user, tasks, earnings, loading }: ArtistDashbo
                             <div className="flex justify-between items-start">
                                 <div>
                                     <p className="text-xs font-medium text-blue-600 mb-1">{task.project_name}</p>
-                                    <h3 className="font-medium text-gray-900">{task.title}</h3>
+                                    <h3 className="font-medium text-gray-900">{task.step_name || task.description}</h3>
                                     <div className="flex gap-2 mt-2">
                                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getStatusColor(task.status)}`}>
                                             {task.status.replace('_', ' ').toUpperCase()}

@@ -34,10 +34,9 @@ export const Tasks = () => {
     };
 
     const filteredTasks = tasks.filter((task) => {
-        const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
         const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
-        return matchesSearch && matchesStatus && matchesPriority;
+        return matchesStatus && matchesPriority;
     });
 
     return (
@@ -115,8 +114,8 @@ export const Tasks = () => {
                             <button
                                 onClick={() => setViewMode('board')}
                                 className={`flex-1 sm:flex-none px-4 py-2 transition-colors ${viewMode === 'board'
-                                        ? 'bg-blue-50 text-blue-600'
-                                        : 'text-gray-600 hover:bg-gray-50'
+                                    ? 'bg-blue-50 text-blue-600'
+                                    : 'text-gray-600 hover:bg-gray-50'
                                     }`}
                                 title="Board View"
                             >
@@ -125,8 +124,8 @@ export const Tasks = () => {
                             <button
                                 onClick={() => setViewMode('list')}
                                 className={`flex-1 sm:flex-none px-4 py-2 border-l transition-colors ${viewMode === 'list'
-                                        ? 'bg-blue-50 text-blue-600'
-                                        : 'text-gray-600 hover:bg-gray-50'
+                                    ? 'bg-blue-50 text-blue-600'
+                                    : 'text-gray-600 hover:bg-gray-50'
                                     }`}
                                 title="List View"
                             >
