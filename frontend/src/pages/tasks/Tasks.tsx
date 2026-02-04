@@ -6,6 +6,7 @@ import type { Task, TaskStatus, TaskPriority } from '../../types/task.types';
 import { TaskBoard } from './TaskBoard';
 import { TaskList } from './TaskList';
 import { TaskFormModal } from '../../components/tasks/TaskFormModal';
+import { TaskRowSkeleton } from '../../components/ui/Skeleton';
 
 export const Tasks = () => {
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -138,8 +139,10 @@ export const Tasks = () => {
 
             {/* Tasks View */}
             {loading ? (
-                <div className="flex items-center justify-center h-64 sm:h-96">
-                    <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600"></div>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-50">
+                    {[...Array(8)].map((_, i) => (
+                        <TaskRowSkeleton key={i} />
+                    ))}
                 </div>
             ) : viewMode === 'board' ? (
                 <div className="w-full -mx-2 sm:mx-0">

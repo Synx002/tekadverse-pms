@@ -121,7 +121,8 @@ exports.getMyTasks = async (req, res) => {
              c.name as client_name,
              manager.name as assigned_by_name
       FROM tasks t
-      LEFT JOIN projects p ON t.project_id = p.id
+      LEFT JOIN pages pg ON t.page_id = pg.id
+      LEFT JOIN projects p ON pg.project_id = p.id
       LEFT JOIN clients c ON p.client_id = c.id
       LEFT JOIN users manager ON t.assigned_by = manager.id
       WHERE t.assigned_to = ?
@@ -502,7 +503,8 @@ exports.getOverdueTasks = async (req, res) => {
              p.name as project_name,
              artist.name as assigned_to_name
       FROM tasks t
-      LEFT JOIN projects p ON t.project_id = p.id
+      LEFT JOIN pages pg ON t.page_id = pg.id
+      LEFT JOIN projects p ON pg.project_id = p.id
       LEFT JOIN users artist ON t.assigned_to = artist.id
       WHERE t.deadline < CURDATE() 
       AND t.status NOT IN ('done', 'approved', 'dropped')

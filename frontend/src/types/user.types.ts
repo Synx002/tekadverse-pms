@@ -30,4 +30,7 @@ export interface UpdateUserData {
     role?: UserRole;
     profile_picture?: File;
     is_active?: boolean;
+    bank_name?: string;
+    bank_account_number?: string;
+    bank_account_holder?: string;
 }

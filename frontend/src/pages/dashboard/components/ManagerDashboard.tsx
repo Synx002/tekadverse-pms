@@ -123,7 +123,7 @@ export const ManagerDashboard = ({ projects, tasks, payouts, loading }: ManagerD
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                     <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-amber-50">
                         <h2 className="font-semibold text-amber-900 flex items-center gap-2">
-                            <Banknote size={18} /> Pembayaran ke Artist
+                            <Banknote size={18} /> Payment to Artist
                         </h2>
                         {payouts && payouts.total_to_pay > 0 && (
                             <span className="text-sm font-bold text-amber-800">
@@ -155,7 +155,7 @@ export const ManagerDashboard = ({ projects, tasks, payouts, loading }: ManagerD
                             </table>
                         ) : (
                             <div className="p-8 text-center text-gray-500 italic">
-                                Tidak ada pembayaran tertunda. Uang akan muncul saat task status Done/Approved.
+                                No pending payments at the moment. Funds will be available once the task status is Done/Approved.
                             </div>
                         )}
                     </div>

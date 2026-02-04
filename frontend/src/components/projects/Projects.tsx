@@ -9,6 +9,7 @@ import type { Client } from '../../types/client.types';
 import { ProjectCard } from './ProjectCard';
 import { ProjectFormModal } from './ProjectFormModal';
 import { useAuthStore } from '../../store/authStore';
+import { ProjectCardSkeleton } from '../ui/Skeleton';
 
 export const Projects = () => {
     const navigate = useNavigate();
@@ -100,8 +101,10 @@ export const Projects = () => {
 
             {/* Projects Grid */}
             {loading ? (
-                <div className="flex items-center justify-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(6)].map((_, i) => (
+                        <ProjectCardSkeleton key={i} />
+                    ))}
                 </div>
             ) : filteredProjects.length === 0 ? (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">

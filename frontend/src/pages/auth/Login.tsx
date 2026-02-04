@@ -86,6 +86,11 @@ export const Login = () => {
                             {errors.password && (
                                 <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
                             )}
+                            <div className="flex justify-end mt-1">
+                                <Link to="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700 font-medium cursor-pointer">
+                                    Forgot password?
+                                </Link>
+                            </div>
                         </div>
 
                         <button

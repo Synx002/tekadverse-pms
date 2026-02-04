@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Task, TaskStatus } from '../../types/task.types';
-import { Calendar, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { tasksApi } from '../../api/tasks.api';
 import { toast } from 'sonner';
@@ -122,42 +122,44 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
                                                 onClick={() => navigate(`/tasks/${task.id}`)}
                                                 className={`bg-white rounded-lg p-4 shadow-sm active:shadow-md transition-shadow cursor-pointer border-l-4 ${getPriorityColor(task.priority)}`}
                                             >
-                                                <h4 className="font-medium text-gray-900 mb-2 border-b border-gray-200 pb-2">{task.project?.name || task.project_name}</h4>
-
+                                                <div className="mb-2">
+                                                    <h4 className="font-bold text-gray-900 leading-tight">{task.project?.name || task.project_name}</h4>
+                                                    <div className="flex flex-wrap items-center gap-1.5 mt-1 text-sm">
+                                                        <span className="font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">{task.page?.name || task.page_name || 'No Page'}</span>
+                                                        {task.step_name && (
+                                                            <>
+                                                                <span className="text-gray-300">/</span>
+                                                                <span className="text-blue-600 font-medium">{task.step_name}</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
 
                                                 {task.description && (
-                                                    <p className="text-sm text-gray-500 mb-3 line-clamp-2">
-                                                        {task.description}
-                                                    </p>
+                                                    <div className="mb-3">
+                                                        <p className="text-sm text-gray-500 line-clamp-2">
+                                                            {task.description}
+                                                        </p>
+                                                    </div>
                                                 )}
 
-                                                <div className="space-y-2">
-                                                    {task.assignee && (
-                                                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                                                            <User className="w-4 h-4" />
-                                                            <span>{task.assignee.name}</span>
+                                                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                                                    {task.deadline ? (
+                                                        <div className="flex items-center gap-1.5 text-sm text-gray-500 bg-gray-50 px-2 py-1 rounded">
+                                                            <Calendar className="w-4 h-4" />
+                                                            <span>{format(new Date(task.deadline), 'MMM dd')}</span>
                                                         </div>
+                                                    ) : (
+                                                        <div />
                                                     )}
 
-                                                    <div className="flex items-center justify-between">
-                                                        {task.deadline && (
-                                                            <div className="flex items-center gap-2 text-sm text-gray-500">
-                                                                <Calendar className="w-4 h-4" />
-                                                                <span>{format(new Date(task.deadline), 'MMM dd')}</span>
-                                                            </div>
-                                                        )}
-
-                                                        <div className="flex items-center gap-2 ml-auto">
-                                                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                                                                {task.priority}
-                                                            </span>
-                                                            {task.comments_count !== undefined && task.comments_count > 0 && (
-                                                                <span className="text-sm text-gray-400 flex items-center gap-1">
-                                                                    <span>💬</span> {task.comments_count}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
+                                                    <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wider border ${task.priority === 'urgent' ? 'bg-red-50 text-red-600 border-red-200' :
+                                                        task.priority === 'high' ? 'bg-orange-50 text-orange-600 border-orange-200' :
+                                                            task.priority === 'medium' ? 'bg-blue-50 text-blue-600 border-blue-200' :
+                                                                'bg-gray-50 text-gray-600 border-gray-200'
+                                                        }`}>
+                                                        {task.priority}
+                                                    </span>
                                                 </div>
                                             </div>
                                         ))}
@@ -214,40 +216,44 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
                                                         : ''
                                                     }`}
                                             >
-                                                <h4 className="font-medium text-gray-900 mb-2 border-b border-gray-200 pb-2">{task.project?.name || task.project_name}</h4>
+                                                <div className="mb-2">
+                                                    <h4 className="font-bold text-gray-900 text-sm leading-tight">{task.project?.name || task.project_name}</h4>
+                                                    <div className="flex flex-wrap items-center gap-1.5 mt-1 text-xs">
+                                                        <span className="font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">{task.page?.name || task.page_name || 'No Page'}</span>
+                                                        {task.step_name && (
+                                                            <>
+                                                                <span className="text-gray-300">/</span>
+                                                                <span className="text-blue-600 font-medium">{task.step_name}</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+
                                                 {task.description && (
-                                                    <p className="text-xs text-gray-500 mb-3 line-clamp-2">
-                                                        {task.description}
-                                                    </p>
+                                                    <div className="mb-3">
+                                                        <p className="text-xs text-gray-500 line-clamp-2">
+                                                            {task.description}
+                                                        </p>
+                                                    </div>
                                                 )}
 
-                                                <div className="space-y-2">
-                                                    {task.assignee && (
-                                                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                            <User className="w-3 h-3" />
-                                                            <span>{task.assignee.name}</span>
+                                                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                                                    {task.deadline ? (
+                                                        <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded">
+                                                            <Calendar className="w-3 h-3" />
+                                                            <span>{format(new Date(task.deadline), 'MMM dd')}</span>
                                                         </div>
+                                                    ) : (
+                                                        <div />
                                                     )}
 
-                                                    <div className="flex items-center justify-between">
-                                                        {task.deadline && (
-                                                            <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                                                                <Calendar className="w-3 h-3" />
-                                                                <span>{format(new Date(task.deadline), 'MMM dd')}</span>
-                                                            </div>
-                                                        )}
-
-                                                        <div className="flex items-center gap-2 ml-auto">
-                                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                                                                {task.priority}
-                                                            </span>
-                                                            {task.comments_count !== undefined && task.comments_count > 0 && (
-                                                                <span className="text-xs text-gray-400 flex items-center gap-1">
-                                                                    <span>💬</span> {task.comments_count}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${task.priority === 'urgent' ? 'bg-red-50 text-red-600 border-red-200' :
+                                                        task.priority === 'high' ? 'bg-orange-50 text-orange-600 border-orange-200' :
+                                                            task.priority === 'medium' ? 'bg-blue-50 text-blue-600 border-blue-200' :
+                                                                'bg-gray-50 text-gray-600 border-gray-200'
+                                                        }`}>
+                                                        {task.priority}
+                                                    </span>
                                                 </div>
                                             </div>
                                         ))}
