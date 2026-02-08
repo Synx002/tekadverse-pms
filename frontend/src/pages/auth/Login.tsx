@@ -18,6 +18,7 @@ export const Login = () => {
     const navigate = useNavigate();
     const setAuth = useAuthStore((state) => state.setAuth);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const {
         register,
@@ -30,6 +31,7 @@ export const Login = () => {
     const onSubmit = async (data: LoginCredentials) => {
         try {
             setLoading(true);
+            setError(null);
             const response = await authApi.login(data);
 
             if (response.success && response.data) {
@@ -38,7 +40,13 @@ export const Login = () => {
                 navigate('/');
             }
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Login gagal');
+            const msg = error.response?.data?.message || 'Login gagal';
+            if (msg === 'Invalid credentials') {
+                setError('Email atau password salah');
+            } else {
+                setError(msg);
+            }
+            // toast.error(msg); // Optional: keep or remove toast
         } finally {
             setLoading(false);
         }
@@ -58,6 +66,11 @@ export const Login = () => {
 
                     {/* Form */}
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                        {error && (
+                            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm text-center border border-red-200">
+                                {error}
+                            </div>
+                        )}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Email

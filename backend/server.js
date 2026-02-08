@@ -42,7 +42,7 @@ app.use(hpp()); // Prevent HTTP Parameter Pollution
 // 4. Rate Limiting
 const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000000,
+    max: 100000000,
     message: { message: 'Too many requests from this IP' },
     standardHeaders: true,
     legacyHeaders: false,

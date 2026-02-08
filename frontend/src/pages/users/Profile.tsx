@@ -185,12 +185,12 @@ export const Profile = () => {
                     </div>
 
                     <div className="text-center md:text-left pb-4 flex-1">
-                        <h1 className="text-3xl font-bold text-white md:text-gray-900 drop-shadow-sm md:drop-shadow-none flex items-center justify-center md:justify-start gap-3">
+                        <h1 className="text-3xl font-bold text-black md:text-gray-900 drop-shadow-sm md:drop-shadow-none flex items-center justify-center md:justify-start gap-3">
                             {user?.name}
                             <div className="bg-emerald-500 w-3 h-3 rounded-full border-2 border-white animate-pulse" />
                         </h1>
                         <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-2">
-                            <span className="flex items-center gap-1.5 text-blue-100 md:text-gray-500 text-sm font-medium">
+                            <span className="flex items-center gap-1.5 text-gray-500 text-sm font-medium">
                                 <Mail size={14} />
                                 {user?.email}
                             </span>
@@ -201,7 +201,7 @@ export const Profile = () => {
                         </div>
                     </div>
 
-                    <div className="pb-4 hidden lg:block">
+                    {/* <div className="pb-4 hidden lg:block">
                         <div className="flex items-center gap-8 px-8 py-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
                             <div className="text-center">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-blue-200">User ID</p>
@@ -213,7 +213,7 @@ export const Profile = () => {
                                 <p className="text-xl font-bold text-white">Active</p>
                             </div>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
             </div>
 

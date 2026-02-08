@@ -187,7 +187,7 @@ export const Users = () => {
                                     <tr key={user.id} className="group hover:bg-gray-50/50 transition-colors">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-4">
-                                                <div className="relative">
+                                                <div className="relative hidden md:block">
                                                     {user.profile_picture ? (
                                                         <img
                                                             src={`${BASE_URL}/${user.profile_picture}`}

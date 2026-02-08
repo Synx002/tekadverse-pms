@@ -147,20 +147,20 @@ const emailTemplates = {
     </p>
   `),
 
-  taskStatusUpdated: (managerName, taskTitle, newStatus, artistName, taskUrl = '#') => emailWrapper(`
-    <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 22px;">Task Status Updated ✅</h2>
-    <p style="margin: 0 0 20px 0; color: #374151; font-size: 16px; line-height: 1.6;">
-        Hi <strong>${managerName}</strong>,
-    </p>
-    <p style="margin: 0 0 20px 0; color: #374151; font-size: 16px; line-height: 1.6;">
-        <strong>${artistName}</strong> has updated the task status:
-    </p>
-    ${infoBox([
-    { label: 'Task', value: taskTitle },
-    { label: 'New Status', value: `<span style="display: inline-block; padding: 4px 12px; background-color: #dbeafe; color: #1e40af; border-radius: 12px; font-size: 13px; font-weight: 600;">${newStatus}</span>` }
-  ])}
-    ${emailButton(taskUrl, 'View Task')}
-  `),
+  // taskStatusUpdated: (managerName, taskTitle, newStatus, artistName, taskUrl = '#') => emailWrapper(`
+  //   <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 22px;">Task Status Updated ✅</h2>
+  //   <p style="margin: 0 0 20px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+  //       Hi <strong>${managerName}</strong>,
+  //   </p>
+  //   <p style="margin: 0 0 20px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+  //       <strong>${artistName}</strong> has updated the task status:
+  //   </p>
+  //   ${infoBox([
+  //   { label: 'Task', value: taskTitle },
+  //   { label: 'New Status', value: `<span style="display: inline-block; padding: 4px 12px; background-color: #dbeafe; color: #1e40af; border-radius: 12px; font-size: 13px; font-weight: 600;">${newStatus}</span>` }
+  // ])}
+  //   ${emailButton(taskUrl, 'View Task')}
+  // `),
 
   newComment: (recipientName, commenterName, taskTitle, comment, taskUrl = '#') => emailWrapper(`
     <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 22px;">New Comment 💬</h2>
