@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { Plus, Search, Filter, LayoutGrid, List } from 'lucide-react';
 import { toast } from 'sonner';
 import { tasksApi } from '../../api/tasks.api';
-import type { Task, TaskStatus, TaskPriority } from '../../types/task.types';
+import type { Task, TaskStatus } from '../../types/task.types';
 import { TaskBoard } from './TaskBoard';
 import { TaskList } from './TaskList';
 import { TaskFormModal } from '../../components/tasks/TaskFormModal';
+import { TaskRowSkeleton } from '../../components/ui/Skeleton';
 
 export const Tasks = () => {
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -13,7 +14,8 @@ export const Tasks = () => {
     const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
-    const [priorityFilter, setPriorityFilter] = useState<TaskPriority | 'all'>('all');
+    const [startDateFilter, setStartDateFilter] = useState('');
+    const [endDateFilter, setEndDateFilter] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
@@ -35,8 +37,27 @@ export const Tasks = () => {
 
     const filteredTasks = tasks.filter((task) => {
         const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
-        const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
-        return matchesStatus && matchesPriority;
+        let matchesDate = true;
+
+        if (startDateFilter || endDateFilter) {
+            if (!task.created_at) {
+                matchesDate = false;
+            } else {
+                const taskDate = new Date(task.created_at).toISOString().split('T')[0];
+                const start = startDateFilter ? startDateFilter : null;
+                const end = endDateFilter ? endDateFilter : null;
+
+                if (start && end) {
+                    matchesDate = taskDate >= start && taskDate <= end;
+                } else if (start) {
+                    matchesDate = taskDate >= start;
+                } else if (end) {
+                    matchesDate = taskDate <= end;
+                }
+            }
+        }
+
+        return matchesStatus && matchesDate;
     });
 
     return (
@@ -96,18 +117,27 @@ export const Tasks = () => {
                             </select>
                         </div>
 
-                        {/* Priority Filter */}
-                        <select
-                            value={priorityFilter}
-                            onChange={(e) => setPriorityFilter(e.target.value as TaskPriority | 'all')}
-                            className="w-full sm:flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base bg-white"
-                        >
-                            <option value="all">All Priority</option>
-                            <option value="low">Low</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
-                            <option value="urgent">Urgent</option>
-                        </select>
+                        {/* Date Filter Range */}
+                        <div className="flex flex-col sm:flex-row gap-2 w-full sm:flex-[2]">
+                            <div className="flex items-center gap-2 w-full">
+                                <span className="text-gray-500 text-sm whitespace-nowrap">From:</span>
+                                <input
+                                    type="date"
+                                    value={startDateFilter}
+                                    onChange={(e) => setStartDateFilter(e.target.value)}
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base bg-white min-w-0"
+                                />
+                            </div>
+                            <div className="flex items-center gap-2 w-full">
+                                <span className="text-gray-500 text-sm whitespace-nowrap">To:</span>
+                                <input
+                                    type="date"
+                                    value={endDateFilter}
+                                    onChange={(e) => setEndDateFilter(e.target.value)}
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm sm:text-base bg-white min-w-0"
+                                />
+                            </div>
+                        </div>
 
                         {/* View Toggle */}
                         <div className="flex border border-gray-300 rounded-lg overflow-hidden">
@@ -138,8 +168,10 @@ export const Tasks = () => {
 
             {/* Tasks View */}
             {loading ? (
-                <div className="flex items-center justify-center h-64 sm:h-96">
-                    <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600"></div>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-50">
+                    {[...Array(8)].map((_, i) => (
+                        <TaskRowSkeleton key={i} />
+                    ))}
                 </div>
             ) : viewMode === 'board' ? (
                 <div className="w-full -mx-2 sm:mx-0">

@@ -5,6 +5,7 @@ import { withdrawalsApi, type Withdrawal } from '../../api/withdrawals.api';
 import { toast } from 'sonner';
 import { Banknote, TrendingUp, Wallet, History, ArrowUpRight, Clock, CheckCircle2, XCircle, AlertCircle, Building2, Users, ArrowDownRight } from 'lucide-react';
 import { format } from 'date-fns';
+import { Skeleton, FinanceCardSkeleton } from '../../components/ui/Skeleton';
 
 export const Finance = () => {
     const { user } = useAuthStore();
@@ -107,21 +108,48 @@ export const Finance = () => {
         }
     };
 
+    const formatShortIDR = (amount: number | string | undefined) => {
+        const value = Number(amount || 0);
+        return `Rp ${value.toLocaleString('id-ID')}`;
+    };
+
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="max-w-[1400px] mx-auto space-y-8 animate-in fade-in duration-500">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    <div className="space-y-2">
+                        <Skeleton className="h-8 w-48" />
+                        <Skeleton className="h-4 w-96" />
+                    </div>
+                    <Skeleton className="h-8 w-40 rounded-full" />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {[...Array(isArtist ? 3 : 4)].map((_, i) => (
+                        <FinanceCardSkeleton key={i} />
+                    ))}
+                </div>
+
+                <div className="grid grid-cols-1 lg:col-span-3 gap-8">
+                    <div className="lg:col-span-1 space-y-6">
+                        <Skeleton className="h-96 w-full rounded-2xl" />
+                        <Skeleton className="h-48 w-full rounded-2xl" />
+                    </div>
+                    <div className="lg:col-span-2">
+                        <Skeleton className="h-[600px] w-full rounded-2xl" />
+                    </div>
+                </div>
             </div>
         );
     }
 
-    const ArtistView = () => (
+    const renderArtistView = () => (
         <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-6 rounded-2xl text-white shadow-lg relative overflow-hidden">
                     <Banknote className="absolute top-1/2 right-4 -translate-y-1/2 w-24 h-24 text-white/10 -rotate-12" />
                     <p className="text-blue-100 text-sm font-medium tracking-wider">Total Earned</p>
-                    <h2 className="text-3xl font-bold mt-1">Rp {earnings?.total_earned.toLocaleString('id-ID')}</h2>
+                    <h2 className="text-3xl font-bold mt-1">{formatShortIDR(earnings?.total_earned)}</h2>
                     <div className="mt-4 flex items-center gap-2 text-blue-100 text-xs">
                         <TrendingUp size={14} /> Lifetime gross earnings
                     </div>
@@ -130,7 +158,7 @@ export const Finance = () => {
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden">
                     <Wallet className="absolute top-1/2 right-4 -translate-y-1/2 w-24 h-24 text-gray-50 -rotate-12" />
                     <p className="text-gray-500 text-sm font-medium tracking-wider">Available Balance</p>
-                    <h2 className="text-3xl font-bold mt-1 text-gray-900 ">Rp {earnings?.total_pending.toLocaleString('id-ID')}</h2>
+                    <h2 className="text-3xl font-bold mt-1 text-gray-900 ">{formatShortIDR(earnings?.total_pending)}</h2>
                     <div className="mt-4 flex items-center gap-2 text-orange-600 text-xs font-medium">
                         <Clock size={14} /> Ready to withdraw
                     </div>
@@ -139,7 +167,7 @@ export const Finance = () => {
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden">
                     <CheckCircle2 className="absolute top-1/2 right-4 -translate-y-1/2 w-24 h-24 text-gray-50 -rotate-12" />
                     <p className="text-gray-500 text-sm font-medium tracking-wider">Paid to Bank</p>
-                    <h2 className="text-3xl font-bold mt-1 text-gray-900 ">Rp {earnings?.total_paid.toLocaleString('id-ID')}</h2>
+                    <h2 className="text-3xl font-bold mt-1 text-gray-900 ">{formatShortIDR(earnings?.total_paid)}</h2>
                     <div className="mt-4 flex items-center gap-2 text-emerald-600 text-xs font-medium">
                         <History size={14} /> Successfully transferred
                     </div>
@@ -168,7 +196,7 @@ export const Finance = () => {
                                         className="w-full pl-12 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none "
                                     />
                                 </div>
-                                <p className="text-[10px] text-gray-500 font-medium">Max Limit: Rp {earnings?.total_pending.toLocaleString('id-ID')}</p>
+                                <p className="text-[10px] text-gray-500 font-medium">Max Limit: {formatShortIDR(earnings?.total_pending)}</p>
                             </div>
 
                             {!user?.bank_account_number ? (
@@ -248,7 +276,7 @@ export const Finance = () => {
                                         withdrawals.map((w) => (
                                             <tr key={w.id} className="hover:bg-gray-50/80 transition-colors">
                                                 <td className="px-6 py-4 whitespace-nowrap  text-gray-900">
-                                                    Rp {parseFloat(w.amount.toString()).toLocaleString('id-ID')}
+                                                    {formatShortIDR(parseFloat(w.amount.toString()))}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     {getStatusBadge(w.status)}
@@ -277,12 +305,12 @@ export const Finance = () => {
         </div>
     );
 
-    const ManagerView = () => (
+    const renderManagerView = () => (
         <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden group hover:border-blue-500 transition-colors">
                     <p className="text-gray-500 text-xs font-medium tracking-widest">Total Earned (System)</p>
-                    <h2 className="text-3xl font-bold mt-2 text-gray-900 ">Rp {globalStats?.total_earned.toLocaleString('id-ID')}</h2>
+                    <h2 className="text-3xl font-bold mt-2 text-gray-900 ">{formatShortIDR(globalStats?.total_earned)}</h2>
                     <div className="mt-4 flex items-center gap-2 text-blue-600 text-[10px] ">
                         <TrendingUp size={14} /> All Artist Work
                     </div>
@@ -290,7 +318,7 @@ export const Finance = () => {
 
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden group hover:border-orange-500 transition-colors">
                     <p className="text-orange-600 text-xs font-medium tracking-widest">Unpaid Balance</p>
-                    <h2 className="text-3xl font-bold mt-2 text-orange-700 ">Rp {globalStats?.total_pending.toLocaleString('id-ID')}</h2>
+                    <h2 className="text-3xl font-bold mt-2 text-orange-700 ">{formatShortIDR(globalStats?.total_pending)}</h2>
                     <div className="mt-4 flex items-center gap-2 text-orange-600 text-[10px] ">
                         <Wallet size={14} /> Not Yet Withdrawn By Artists
                     </div>
@@ -298,7 +326,7 @@ export const Finance = () => {
 
                 <div className="bg-red-50 p-6 rounded-2xl border-2 border-red-200 relative overflow-hidden">
                     <p className="text-red-700 text-xs font-medium tracking-widest">Pending Requests</p>
-                    <h2 className="text-3xl font-bold mt-2 text-red-800 ">Rp {globalStats?.pending_requests_amount.toLocaleString('id-ID')}</h2>
+                    <h2 className="text-3xl font-bold mt-2 text-red-800 ">{formatShortIDR(globalStats?.pending_requests_amount)}</h2>
                     <div className="mt-4 flex items-center gap-2 text-red-600 text-[10px]">
                         <Clock size={14} /> {globalStats?.pending_requests} Requests Waiting
                     </div>
@@ -306,7 +334,7 @@ export const Finance = () => {
 
                 <div className="bg-emerald-600 p-6 rounded-2xl shadow-lg shadow-emerald-100 text-white relative overflow-hidden">
                     <p className="text-emerald-100 text-xs font-medium tracking-widest">Total Lifetime Paid</p>
-                    <h2 className="text-3xl font-bold mt-2 text-white ">Rp {globalStats?.total_paid.toLocaleString('id-ID')}</h2>
+                    <h2 className="text-3xl font-bold mt-2 text-white ">{formatShortIDR(globalStats?.total_paid)}</h2>
                     <div className="mt-4 flex items-center gap-2 text-emerald-100 text-[10px]">
                         <CheckCircle2 size={14} /> Successfully Transferred
                     </div>
@@ -337,7 +365,7 @@ export const Finance = () => {
                                         </div>
                                         <div className="text-right">
                                             <p className="text-[10px] font-black text-gray-400 tracking-widest mb-1">Amount</p>
-                                            <p className="text-xl font-black text-blue-700">Rp {parseFloat(w.amount.toString()).toLocaleString('id-ID')}</p>
+                                            <p className="text-xl font-black text-blue-700">{formatShortIDR(parseFloat(w.amount.toString()))}</p>
                                         </div>
                                     </div>
                                     <div className="bg-gray-100 rounded-xl p-4 flex gap-4 items-center mb-4">
@@ -392,7 +420,7 @@ export const Finance = () => {
                                                 <div className="text-[10px] text-gray-500  italic">{p.artist_email}</div>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <span className=" text-orange-600">Rp {p.total_pending.toLocaleString('id-ID')}</span>
+                                                <span className=" text-orange-600">{formatShortIDR(p.total_pending)}</span>
                                             </td>
                                         </tr>
                                     ))}
@@ -404,7 +432,7 @@ export const Finance = () => {
                         </div>
                         <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
                             <p className="text-[10px] text-gray-400 font-bold tracking-widest leading-relaxed">
-                                TOTAL UNPAID: <span className="text-orange-600 ml-1">Rp {payouts.reduce((s, p) => s + Number(p.total_pending), 0).toLocaleString('id-ID')}</span>
+                                TOTAL UNPAID: <span className="text-orange-600 ml-1">{formatShortIDR(payouts.reduce((s, p) => s + Number(p.total_pending), 0))}</span>
                             </p>
                         </div>
                     </div>
@@ -427,7 +455,7 @@ export const Finance = () => {
                                                         {w.status === 'approved' ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs font-bold text-gray-800">Rp {parseFloat(w.amount.toString()).toLocaleString('id-ID')}</p>
+                                                        <p className="text-xs font-bold text-gray-800">{formatShortIDR(parseFloat(w.amount.toString()))}</p>
                                                         <p className="text-[10px] text-gray-400 capitalize">{w.artist_name} • {w.status}</p>
                                                     </div>
                                                 </div>
@@ -464,7 +492,7 @@ export const Finance = () => {
                 </div>
             </div>
 
-            {isArtist ? <ArtistView /> : <ManagerView />}
+            {isArtist ? renderArtistView() : renderManagerView()}
         </div>
     );
 };

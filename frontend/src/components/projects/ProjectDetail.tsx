@@ -10,7 +10,6 @@ import { ProjectFormModal } from './ProjectFormModal';
 import type { Project } from '../../types/project.types';
 import type { Page } from '../../types/page.types';
 import type { Client } from '../../types/client.types';
-import { format } from 'date-fns';
 import { useAuthStore } from '../../store/authStore';
 
 export const ProjectDetail = () => {

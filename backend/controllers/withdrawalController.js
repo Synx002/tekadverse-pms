@@ -158,23 +158,34 @@ exports.updateWithdrawalStatus = async (req, res) => {
                 for (const earning of earnings) {
                     if (remainingToMark <= 0) break;
 
-                    const amountToMark = Math.min(parseFloat(earning.amount), remainingToMark);
+                    const earningAmount = parseFloat(earning.amount);
 
                     // If the earning amount is exactly what's needed or less, mark it all as paid
-                    if (parseFloat(earning.amount) <= remainingToMark) {
+                    if (earningAmount <= remainingToMark) {
                         await connection.execute(
                             "UPDATE artist_earnings SET status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?",
                             [earning.id]
                         );
-                        remainingToMark -= parseFloat(earning.amount);
+                        remainingToMark -= earningAmount;
                     } else {
-                        // This part is tricky: if a single earning record is LARGER than the withdrawal,
-                        // we need to split it. For simplicity, we'll just mark it as paid.
-                        // In a real system, we might split the record.
+                        // If a single earning record is LARGER than the remaining withdrawal amount,
+                        // we need to split it: create a new 'paid' record and update the original to reduce its amount
+
+                        // Create a new 'paid' record for the withdrawn portion
                         await connection.execute(
-                            "UPDATE artist_earnings SET status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?",
-                            [earning.id]
+                            `INSERT INTO artist_earnings (artist_id, task_id, amount, status, paid_at, created_at) 
+                             SELECT artist_id, task_id, ?, 'paid', CURRENT_TIMESTAMP, created_at 
+                             FROM artist_earnings WHERE id = ?`,
+                            [remainingToMark, earning.id]
                         );
+
+                        // Update the original record to reduce its amount (keep it as 'pending')
+                        const newAmount = earningAmount - remainingToMark;
+                        await connection.execute(
+                            "UPDATE artist_earnings SET amount = ? WHERE id = ?",
+                            [newAmount, earning.id]
+                        );
+
                         remainingToMark = 0;
                     }
                 }

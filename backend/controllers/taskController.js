@@ -121,7 +121,8 @@ exports.getMyTasks = async (req, res) => {
              c.name as client_name,
              manager.name as assigned_by_name
       FROM tasks t
-      LEFT JOIN projects p ON t.project_id = p.id
+      LEFT JOIN pages pg ON t.page_id = pg.id
+      LEFT JOIN projects p ON pg.project_id = p.id
       LEFT JOIN clients c ON p.client_id = c.id
       LEFT JOIN users manager ON t.assigned_by = manager.id
       WHERE t.assigned_to = ?
@@ -248,15 +249,20 @@ exports.createTask = async (req, res) => {
         );
 
         // Send email
-        if (artist.length > 0 && page.length > 0) {
-            const emailHtml = emailTemplates.taskAssigned(
-                artist[0].name,
-                description,
-                page[0].name,
-                deadline || 'Not set'
-            );
-            await sendEmail(artist[0].email, 'New Task Assigned - Tekadverse PMS', emailHtml);
-        }
+        // if (artist.length > 0 && page.length > 0) {
+        //     try {
+        //         const emailHtml = emailTemplates.taskAssigned(
+        //             artist[0].name,
+        //             description,
+        //             page[0].name,
+        //             deadline || 'Not set'
+        //         );
+        //         await sendEmail(artist[0].email, 'New Task Assigned - Tekadverse PMS', emailHtml);
+        //     } catch (emailErr) {
+        //         console.error('Error sending assignment email:', emailErr);
+        //         // Don't fail the request if email fails, as task is already created
+        //     }
+        // }
 
         await logActivity(req.user.id, 'created_task', 'task', result.insertId, null, { assigned_to }, req.ip);
 
@@ -295,11 +301,7 @@ exports.updateTaskStatus = async (req, res) => {
             }
         }
 
-        if (req.user.role === 'manager') {
-            if (status === 'done') {
-                return res.status(403).json({ message: 'Only Admins can mark tasks as Done' });
-            }
-        }
+
 
         const [existing] = await db.execute(
             `SELECT t.*, u.name as artist_name, m.email as manager_email, m.name as manager_name
@@ -502,7 +504,8 @@ exports.getOverdueTasks = async (req, res) => {
              p.name as project_name,
              artist.name as assigned_to_name
       FROM tasks t
-      LEFT JOIN projects p ON t.project_id = p.id
+      LEFT JOIN pages pg ON t.page_id = pg.id
+      LEFT JOIN projects p ON pg.project_id = p.id
       LEFT JOIN users artist ON t.assigned_to = artist.id
       WHERE t.deadline < CURDATE() 
       AND t.status NOT IN ('done', 'approved', 'dropped')
