@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { CheckSquare, Clock, AlertCircle, Calendar, Banknote } from 'lucide-react';
+import { CheckSquare, Clock, Calendar, Banknote, Wallet } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Task } from '../../../types/task.types';
 import type { User } from '../../../types/user.types';
@@ -16,38 +16,39 @@ export const ArtistDashboard = ({ user, tasks, earnings, loading }: ArtistDashbo
 
     const myTasks = tasks.filter(t => t.assigned_to === user?.id);
     const activeTasks = myTasks.filter(t => !['done', 'approved', 'dropped'].includes(t.status));
-    const completedTasks = myTasks.filter(t => ['done', 'approved'].includes(t.status));
-    const urgentTasks = activeTasks.filter(t => t.priority === 'urgent');
 
-    const totalEarned = earnings?.total_earned ?? 0;
+    const formatCurrency = (amount: number | string | undefined) => {
+        return `Rp ${Number(amount || 0).toLocaleString('id-ID')}`;
+    };
+
     const stats = [
         {
-            title: 'Uang Terkumpul',
-            value: `Rp ${totalEarned.toLocaleString('id-ID')}`,
+            title: 'Penghasilan Total',
+            value: formatCurrency(earnings?.total_earned),
             icon: Banknote,
-            color: 'bg-emerald-500',
-            subtitle: 'Dari task yang selesai (done/approved)'
+            color: 'bg-blue-600',
+            subtitle: 'Lifetime gross earnings'
         },
         {
-            title: 'My Active Tasks',
+            title: 'Saldo Tersedia',
+            value: formatCurrency(earnings?.total_pending),
+            icon: Wallet,
+            color: 'bg-orange-500',
+            subtitle: 'Ready to withdraw'
+        },
+        {
+            title: 'Telah Dibayar',
+            value: formatCurrency(earnings?.total_paid),
+            icon: CheckSquare,
+            color: 'bg-emerald-500',
+            subtitle: 'Transferred to bank'
+        },
+        {
+            title: 'Active Tasks',
             value: activeTasks.length,
             icon: Clock,
-            color: 'bg-blue-500',
-            subtitle: 'Currently working on'
-        },
-        {
-            title: 'Completed',
-            value: completedTasks.length,
-            icon: CheckSquare,
-            color: 'bg-green-500',
-            subtitle: 'Lifetime total'
-        },
-        {
-            title: 'Urgent',
-            value: urgentTasks.length,
-            icon: AlertCircle,
-            color: 'bg-red-500',
-            subtitle: 'Needs immediate focus'
+            color: 'bg-indigo-500',
+            subtitle: 'Currently in progress'
         }
     ];
 

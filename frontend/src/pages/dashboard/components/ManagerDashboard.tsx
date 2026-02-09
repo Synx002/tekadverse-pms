@@ -24,6 +24,9 @@ export const ManagerDashboard = ({ projects, tasks, payouts, loading }: ManagerD
     const tasksToReview = tasks.filter(t => ['under_review', 'finished'].includes(t.status));
     const urgentTasks = tasks.filter(t => t.priority === 'urgent' && !['done', 'approved', 'dropped'].includes(t.status));
 
+    const formatCurrency = (amount: number | string | undefined) => {
+        return `Rp ${Number(amount || 0).toLocaleString('id-ID')}`;
+    };
     const stats = [
         {
             title: 'Active Projects',
@@ -127,7 +130,7 @@ export const ManagerDashboard = ({ projects, tasks, payouts, loading }: ManagerD
                         </h2>
                         {payouts && payouts.total_to_pay > 0 && (
                             <span className="text-sm font-bold text-amber-800">
-                                Total: Rp {payouts.total_to_pay.toLocaleString('id-ID')}
+                                Total: {formatCurrency(payouts.total_to_pay)}
                             </span>
                         )}
                     </div>
@@ -147,7 +150,7 @@ export const ManagerDashboard = ({ projects, tasks, payouts, loading }: ManagerD
                                             <td className="px-4 py-3 font-medium text-gray-900">{p.artist_name}</td>
                                             <td className="px-4 py-3 text-gray-600">{p.artist_email}</td>
                                             <td className="px-4 py-3 text-right font-semibold text-amber-700">
-                                                Rp {p.total_pending.toLocaleString('id-ID')}
+                                                {formatCurrency(p.total_pending)}
                                             </td>
                                         </tr>
                                     ))}
