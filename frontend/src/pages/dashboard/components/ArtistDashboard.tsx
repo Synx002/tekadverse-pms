@@ -55,7 +55,7 @@ export const ArtistDashboard = ({ user, tasks, earnings, loading }: ArtistDashbo
     const getStatusColor = (status: string) => {
         const colors: Record<string, string> = {
             todo: 'bg-gray-100 text-gray-800',
-            working: 'bg-blue-100 text-blue-800',
+            'work in progress': 'bg-blue-100 text-blue-800',
             finished: 'bg-indigo-100 text-indigo-800',
             need_update: 'bg-yellow-100 text-yellow-800',
             under_review: 'bg-purple-100 text-purple-800',

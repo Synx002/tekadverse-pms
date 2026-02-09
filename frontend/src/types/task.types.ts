@@ -2,7 +2,7 @@ import type { Project } from "./project.types";
 import type { Page } from "./page.types";
 import type { User } from "./user.types";
 
-export type TaskStatus = 'todo' | 'working' | 'finished' | 'need_update' | 'under_review' | 'approved' | 'done' | 'dropped';
+export type TaskStatus = 'todo' | 'work in progress' | 'finished' | 'need_update' | 'under_review' | 'approved' | 'done' | 'dropped';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
 export interface Task {
