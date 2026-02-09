@@ -16,7 +16,7 @@ async function createArtistEarningIfDone(taskId) {
         );
         if (task.length === 0 || !task[0].assigned_to) return;
         const t = task[0];
-        if (!['done', 'approved'].includes(t.status)) return;
+        if (t.status !== 'done') return;
         const amount = parseFloat(t.step_price) || 0;
         if (amount <= 0) return;
 
@@ -288,16 +288,16 @@ exports.updateTaskStatus = async (req, res) => {
         const { id } = req.params;
         const { status } = req.body;
 
-        const validStatuses = ['todo', 'working', 'finished', 'need_update', 'under_review', 'approved', 'done', 'dropped'];
+        const validStatuses = ['todo', 'work in progress', 'finished', 'need_update', 'under_review', 'approved', 'done', 'dropped'];
         if (!validStatuses.includes(status)) {
             return res.status(400).json({ message: 'Invalid status' });
         }
 
         // Role-based status restrictions
         if (req.user.role === 'artist') {
-            const allowedForArtist = ['todo', 'working', 'finished'];
+            const allowedForArtist = ['todo', 'work in progress', 'finished'];
             if (!allowedForArtist.includes(status)) {
-                return res.status(403).json({ message: 'Artists can only move tasks to Todo, Working, or Finished' });
+                return res.status(403).json({ message: 'Artists can only move tasks to Todo, Work In Progress, or Finished' });
             }
         }
 
@@ -326,9 +326,9 @@ exports.updateTaskStatus = async (req, res) => {
             }
         }
 
-        // Update started_at when status changes to 'working'
+        // Update started_at when status changes to 'work in progress'
         let started_at = task.started_at;
-        if (status === 'working' && !started_at) {
+        if (status === 'work in progress' && !started_at) {
             started_at = new Date();
         }
 
@@ -343,7 +343,7 @@ exports.updateTaskStatus = async (req, res) => {
             [status, started_at, completed_at, id]
         );
 
-        if (['done', 'approved'].includes(status)) {
+        if (status === 'done') {
             await createArtistEarningIfDone(id);
         }
 
@@ -395,7 +395,7 @@ exports.updateTask = async (req, res) => {
 
         // Validate status if provided
         if (status) {
-            const validStatuses = ['todo', 'working', 'finished', 'need_update', 'under_review', 'approved', 'done', 'dropped'];
+            const validStatuses = ['todo', 'work in progress', 'finished', 'need_update', 'under_review', 'approved', 'done', 'dropped'];
             if (!validStatuses.includes(status)) {
                 return res.status(400).json({ message: 'Invalid status' });
             }
@@ -447,7 +447,7 @@ exports.updateTask = async (req, res) => {
             [step_id, description, assigned_to, priority, deadline, status, id]
         );
 
-        if (['done', 'approved'].includes(status)) {
+        if (status === 'done') {
             await createArtistEarningIfDone(id);
         }
 
