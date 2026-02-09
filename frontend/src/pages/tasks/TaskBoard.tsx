@@ -16,8 +16,8 @@ const columns: { status: TaskStatus; title: string; color: string }[] = [
     { status: 'todo', title: 'To Do', color: 'bg-gray-100' },
     { status: 'working', title: 'Working', color: 'bg-blue-100' },
     { status: 'finished', title: 'Finished', color: 'bg-indigo-100' },
-    { status: 'need_update', title: 'Need Update', color: 'bg-yellow-100' },
     { status: 'under_review', title: 'Under Review', color: 'bg-purple-100' },
+    { status: 'need_update', title: 'Need Update', color: 'bg-yellow-100' },
     { status: 'approved', title: 'Approved', color: 'bg-green-100' },
     { status: 'done', title: 'Done', color: 'bg-green-100' },
 ];
