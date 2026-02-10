@@ -15,7 +15,7 @@ export const TaskList = ({ tasks }: TaskListProps) => {
     const getStatusColor = (status: string) => {
         const colors: Record<string, string> = {
             todo: 'bg-gray-100 text-gray-800',
-            working: 'bg-blue-100 text-blue-800',
+            'work in progress': 'bg-blue-100 text-blue-800',
             need_update: 'bg-yellow-100 text-yellow-800',
             under_review: 'bg-purple-100 text-purple-800',
             approved: 'bg-green-100 text-green-800',

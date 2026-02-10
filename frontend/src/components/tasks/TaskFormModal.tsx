@@ -22,7 +22,7 @@ const taskSchemaBase = z.object({
     assigned_to: z.number().min(1, 'Please select an artist'),
     priority: z.enum(['low', 'medium', 'high', 'urgent']),
     deadline: z.string().optional().or(z.literal('')),
-    status: z.enum(['todo', 'working', 'finished', 'need_update', 'under_review', 'approved', 'done', 'dropped']).optional(),
+    status: z.enum(['todo', 'work in progress', 'finished', 'need_update', 'under_review', 'approved', 'done', 'dropped']).optional(),
 });
 
 type TaskFormData = z.infer<typeof taskSchemaBase>;
@@ -351,7 +351,7 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                     >
                                         <option value="todo">To Do</option>
-                                        <option value="working">Working</option>
+                                        <option value="work in progress">Work In Progress</option>
                                         <option value="finished">Finished</option>
                                         <option value="need_update">Need Update</option>
                                         <option value="under_review">Under Review</option>

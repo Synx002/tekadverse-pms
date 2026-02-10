@@ -50,7 +50,7 @@ export const Projects = () => {
     const canCreateProject = user?.role === 'admin' || user?.role === 'manager';
 
     return (
-        <div className="space-y-6">
+        <div className="max-w-[1400px] mx-auto space-y-6 animate-in fade-in duration-500">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>

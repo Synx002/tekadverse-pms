@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Menu, LogOut, User, Settings } from 'lucide-react';
+import { Menu, LogOut, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useUIStore } from '../../store/uiStore';
@@ -85,7 +85,7 @@ export const Header = () => {
                                         <User className="w-4 h-4" />
                                         Profile
                                     </button>
-                                    <button
+                                    {/* <button
                                         onClick={() => {
                                             navigate('/settings');
                                             setShowUserMenu(false);
@@ -94,7 +94,7 @@ export const Header = () => {
                                     >
                                         <Settings className="w-4 h-4" />
                                         Settings
-                                    </button>
+                                    </button> */}
                                     <hr className="my-1 border-gray-200" />
                                     <button
                                         onClick={handleLogout}

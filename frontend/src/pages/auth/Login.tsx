@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import { Eye, EyeOff } from 'lucide-react';
 import Logo from '../../assets/logo.svg';
 import { authApi } from '../../api/auth.api';
 import { useAuthStore } from '../../store/authStore';
@@ -19,6 +20,7 @@ export const Login = () => {
     const setAuth = useAuthStore((state) => state.setAuth);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showPassword, setShowPassword] = useState(false);
 
     const {
         register,
@@ -78,7 +80,7 @@ export const Login = () => {
                             <input
                                 {...register('email')}
                                 type="email"
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                                 placeholder="your@email.com"
                             />
                             {errors.email && (
@@ -90,12 +92,21 @@ export const Login = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Password
                             </label>
-                            <input
-                                {...register('password')}
-                                type="password"
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                placeholder="••••••••"
-                            />
+                            <div className="relative">
+                                <input
+                                    {...register('password')}
+                                    type={showPassword ? "text" : "password"}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                    placeholder="••••••••"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                >
+                                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                </button>
+                            </div>
                             {errors.password && (
                                 <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
                             )}

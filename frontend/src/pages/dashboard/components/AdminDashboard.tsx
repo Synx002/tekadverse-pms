@@ -21,6 +21,9 @@ interface AdminDashboardProps {
 
 export const AdminDashboard = ({ projects, tasks, users, payouts, loading }: AdminDashboardProps) => {
     const navigate = useNavigate();
+    const formatCurrency = (amount: number | string | undefined) => {
+        return `Rp ${Number(amount || 0).toLocaleString('id-ID')}`;
+    };
 
     // In a real app, we'd fetch these from separate endpoints, 
     // but here we use the props for simplicity
@@ -76,7 +79,7 @@ export const AdminDashboard = ({ projects, tasks, users, payouts, loading }: Adm
                             <Banknote size={18} /> Pembayaran ke Artist
                         </h2>
                         <span className="text-sm font-bold text-amber-800">
-                            Total: Rp {payouts.total_to_pay.toLocaleString('id-ID')}
+                            Total: Rp {formatCurrency(payouts.total_to_pay)}
                         </span>
                     </div>
                     <div className="overflow-x-auto">
@@ -94,7 +97,7 @@ export const AdminDashboard = ({ projects, tasks, users, payouts, loading }: Adm
                                         <td className="px-4 py-3 font-medium text-gray-900">{p.artist_name}</td>
                                         <td className="px-4 py-3 text-gray-600">{p.artist_email}</td>
                                         <td className="px-4 py-3 text-right font-semibold text-amber-700">
-                                            Rp {p.total_pending.toLocaleString('id-ID')}
+                                            {formatCurrency(p.total_pending)}
                                         </td>
                                     </tr>
                                 ))}

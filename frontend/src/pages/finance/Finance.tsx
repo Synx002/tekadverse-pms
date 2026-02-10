@@ -90,8 +90,11 @@ export const Finance = () => {
             await withdrawalsApi.updateStatus(id, status, note || undefined);
             toast.success(`Request ${status}`);
             loadFinanceData();
-        } catch (error) {
-            toast.error('Failed to update status');
+        } catch (error: any) {
+            console.error('Update status error:', error);
+            const serverMsg = error.response?.data?.message || 'Failed to update status';
+            const details = error.response?.data?.details || error.message;
+            toast.error(`${serverMsg} (${details})`);
         }
     };
 

@@ -16,7 +16,23 @@ exports.getMyNotifications = async (req, res) => {
         query += ' ORDER BY created_at DESC LIMIT 50';
 
         const [notifications] = await db.execute(query, params);
-        res.json({ success: true, data: notifications });
+
+        // Enhance notifications with generated titles if missing
+        const enhancedNotifications = notifications.map(n => {
+            const generatedTitle = n.type
+                ? n.type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+                : 'Notification';
+
+            return {
+                ...n,
+                title: n.title || generatedTitle,
+                message: (n.message && n.message !== '-' && n.message.trim() !== '')
+                    ? n.message
+                    : `New ${generatedTitle.toLowerCase()} activity`
+            };
+        });
+
+        res.json({ success: true, data: enhancedNotifications });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: 'Server error' });
@@ -90,12 +106,14 @@ exports.deleteNotification = async (req, res) => {
 // Create a new notification
 exports.createNotification = async (userId, type, message, relatedType = null, relatedId = null) => {
     try {
-        // Use type as title if needed, or translate it
-        // const title = type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        // Ensure message is valid
+        const finalMessage = (message && message !== '-' && message.trim() !== '')
+            ? message
+            : `New ${type.replace(/_/g, ' ')} update`;
 
         await db.execute(
             'INSERT INTO notifications (user_id, message, type, related_type, related_id) VALUES (?, ?, ?, ?, ?)',
-            [userId, message, type, relatedType, relatedId]
+            [userId, finalMessage, type, relatedType, relatedId]
         );
         return true;
     } catch (error) {

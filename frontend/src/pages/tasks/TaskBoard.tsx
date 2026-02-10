@@ -14,10 +14,10 @@ interface TaskBoardProps {
 
 const columns: { status: TaskStatus; title: string; color: string }[] = [
     { status: 'todo', title: 'To Do', color: 'bg-gray-100' },
-    { status: 'working', title: 'Working', color: 'bg-blue-100' },
+    { status: 'work in progress', title: 'Work In Progress', color: 'bg-blue-100' },
     { status: 'finished', title: 'Finished', color: 'bg-indigo-100' },
-    { status: 'need_update', title: 'Need Update', color: 'bg-yellow-100' },
     { status: 'under_review', title: 'Under Review', color: 'bg-purple-100' },
+    { status: 'need_update', title: 'Need Update', color: 'bg-yellow-100' },
     { status: 'approved', title: 'Approved', color: 'bg-green-100' },
     { status: 'done', title: 'Done', color: 'bg-green-100' },
 ];
@@ -177,20 +177,20 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
                 })}
             </div>
 
-            {/* Desktop View - Horizontal Scroll */}
-            <div className="hidden lg:block overflow-x-auto pb-4">
-                <div className="inline-flex gap-4 min-w-full h-full min-h-[600px]">
+            {/* Desktop View - Internal Horizontal Scroll */}
+            <div className="hidden lg:block overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                <div className="flex gap-4 min-w-full w-fit">
                     {columns.map((column) => {
                         const columnTasks = getTasksByStatus(column.status);
 
                         return (
                             <div
                                 key={column.status}
-                                className="flex-shrink-0 w-80"
+                                className="w-80 flex-shrink-0"
                                 onDragOver={handleDragOver}
                                 onDrop={(e) => handleDrop(e, column.status)}
                             >
-                                <div className={`${column.color} rounded-lg h-full flex flex-col overflow-hidden text-sm`}>
+                                <div className={`${column.color} rounded-lg h-full flex flex-col overflow-hidden text-sm border border-gray-200/50`}>
                                     {/* Desktop Header */}
                                     <div className="p-3 flex items-center justify-between font-semibold text-gray-700 bg-opacity-50">
                                         <div className="flex items-center gap-2">
@@ -229,11 +229,9 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
                                                     </div>
                                                 </div>
 
-                                                {task.description && (
-                                                    <div className="mb-3">
-                                                        <p className="text-xs text-gray-500 line-clamp-2">
-                                                            {task.description}
-                                                        </p>
+                                                {task.assigned_to_name && (
+                                                    <div className="flex flex-wrap items-center gap-1.5 mt-1 mb-2 text-xs">
+                                                        <span className="font-semibold text-gray-700 bg-green-100 px-1.5 py-0.5 rounded">{task.assigned_to_name}</span>
                                                     </div>
                                                 )}
 

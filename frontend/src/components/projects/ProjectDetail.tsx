@@ -98,7 +98,7 @@ export const ProjectDetail = () => {
     const progress = totalTasks > 0 ? Math.min(100, (completedTasksCount / totalTasks) * 100) : 0;
 
     return (
-        <div className="space-y-6">
+        <div className="max-w-[1400px] mx-auto space-y-6 animate-in fade-in duration-500">
             {/* Back button */}
             <button
                 onClick={() => navigate('/projects')}

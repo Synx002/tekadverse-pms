@@ -36,11 +36,13 @@ exports.addComment = async (req, res) => {
             `SELECT t.description, t.assigned_to, t.assigned_by,
               artist.name as artist_name, artist.email as artist_email,
               manager.name as manager_name, manager.email as manager_email,
-              ps.step_name
+              ps.step_name, pg.name as page_name, p.name as project_name
        FROM tasks t
        LEFT JOIN users artist ON t.assigned_to = artist.id
        LEFT JOIN users manager ON t.assigned_by = manager.id
        LEFT JOIN project_steps ps ON t.step_id = ps.id
+       LEFT JOIN pages pg ON t.page_id = pg.id
+       LEFT JOIN projects p ON pg.project_id = p.id
        WHERE t.id = ?`,
             [task_id]
         );
@@ -75,12 +77,13 @@ exports.addComment = async (req, res) => {
         const [commenter] = await db.execute('SELECT name FROM users WHERE id = ?', [req.user.id]);
 
         // Create notification
+        const taskIdentifier = `[${task.project_name}] ${task.page_name} - ${task.step_name || 'Untitled'}`;
         await db.execute(
             `INSERT INTO notifications (user_id, message, type, related_id, related_type)
        VALUES (?, ?, ?, ?, ?)`,
             [
                 notifyUserId,
-                `${commenter[0].name} commented on task "${task.step_name || task.description}"`,
+                `${commenter[0].name} commented on task "${taskIdentifier}"`,
                 'comment_added',
                 task_id,
                 'task'

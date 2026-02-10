@@ -1,27 +1,70 @@
 import { useEffect, useState } from 'react';
-import { Plus, Search, Filter, LayoutGrid, List } from 'lucide-react';
+import { Plus, Filter, LayoutGrid, List, FolderOpen, FileText, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import { tasksApi } from '../../api/tasks.api';
+import { projectsApi } from '../../api/projects.api';
+import { pagesApi } from '../../api/pages.api';
 import type { Task, TaskStatus } from '../../types/task.types';
+import type { Project } from '../../types/project.types';
+import type { Page, PageStep } from '../../types/page.types';
 import { TaskBoard } from './TaskBoard';
 import { TaskList } from './TaskList';
 import { TaskFormModal } from '../../components/tasks/TaskFormModal';
 import { TaskRowSkeleton } from '../../components/ui/Skeleton';
+import { useAuthStore } from '../../store/authStore';
+
 
 export const Tasks = () => {
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [pages, setPages] = useState<Page[]>([]);
+    const [availableSteps, setAvailableSteps] = useState<PageStep[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
-    const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
+    const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
+    const [selectedPageId, setSelectedPageId] = useState<string>('all');
+    const [selectedStepId, setSelectedStepId] = useState<string>('all');
     const [startDateFilter, setStartDateFilter] = useState('');
     const [endDateFilter, setEndDateFilter] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const user = useAuthStore((state) => state.user);
 
     useEffect(() => {
         loadTasks();
+        loadFilters();
     }, []);
+
+    useEffect(() => {
+        if (selectedProjectId !== 'all') {
+            loadProjectSteps(Number(selectedProjectId));
+        } else {
+            setAvailableSteps([]);
+        }
+    }, [selectedProjectId]);
+
+    const loadProjectSteps = async (projectId: number) => {
+        try {
+            const response = await projectsApi.getById(projectId);
+            setAvailableSteps(response.data?.steps || []);
+        } catch (error) {
+            console.error('Failed to load project steps', error);
+        }
+    };
+
+    const loadFilters = async () => {
+        try {
+            const [projectsRes, pagesRes] = await Promise.all([
+                projectsApi.getAll(),
+                pagesApi.getAll()
+            ]);
+            setProjects(projectsRes.data || []);
+            setPages(pagesRes.data || []);
+        } catch (error) {
+            console.error('Failed to load filters', error);
+        }
+    };
 
     const loadTasks = async () => {
         try {
@@ -37,6 +80,19 @@ export const Tasks = () => {
 
     const filteredTasks = tasks.filter((task) => {
         const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
+
+        // Resolve project_id from multiple sources
+        const page = pages.find(p => p.id === task.page_id);
+        const taskProjectId = task.project?.id || task.page?.project_id || page?.project_id;
+
+        const matchesProject = selectedProjectId === 'all' ||
+            taskProjectId === Number(selectedProjectId);
+
+        const matchesPage = selectedPageId === 'all' || task.page_id === Number(selectedPageId);
+
+        const matchesStep = selectedStepId === 'all' ||
+            task.step_id === Number(selectedStepId);
+
         let matchesDate = true;
 
         if (startDateFilter || endDateFilter) {
@@ -57,42 +113,101 @@ export const Tasks = () => {
             }
         }
 
-        return matchesStatus && matchesDate;
+        return matchesStatus && matchesDate && matchesProject && matchesPage && matchesStep;
     });
 
+    const filteredPages = selectedProjectId === 'all'
+        ? pages
+        : pages.filter(p => p.project_id === Number(selectedProjectId));
+
     return (
-        <div className="space-y-4 sm:space-y-6 w-full px-2 sm:px-4 lg:px-6">
+        <div className="max-w-[1400px] mx-auto space-y-4 sm:space-y-6 animate-in fade-in duration-500 px-4 sm:px-6 lg:px-8">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                 <div className="min-w-0">
                     <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">Tasks</h1>
                     <p className="text-sm sm:text-base text-gray-600 mt-1">Manage and track all tasks</p>
                 </div>
-                <button
-                    onClick={() => {
-                        setSelectedTask(null);
-                        setShowModal(true);
-                    }}
-                    className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors cursor-pointer w-full sm:w-auto flex-shrink-0 text-sm sm:text-base"
-                >
-                    <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span>New Task</span>
-                </button>
+                {(user?.role === 'admin' || user?.role === 'manager') && (
+                    <button
+                        onClick={() => {
+                            setSelectedTask(null);
+                            setShowModal(true);
+                        }}
+                        className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors cursor-pointer w-full sm:w-auto flex-shrink-0 text-sm sm:text-base"
+                    >
+                        <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <span>New Task</span>
+                    </button>
+                )}
             </div>
 
             {/* Filters & View Toggle */}
             <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4">
                 <div className="flex flex-col gap-3 sm:gap-4">
-                    {/* Search Bar */}
-                    <div className="w-full relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search tasks..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
-                        />
+                    {/* Search/Filters Replacement */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {/* Project Filter */}
+                        <div className="relative">
+                            <FolderOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                            <select
+                                value={selectedProjectId}
+                                onChange={(e) => {
+                                    setSelectedProjectId(e.target.value);
+                                    setSelectedPageId('all');
+                                    setSelectedStepId('all');
+                                }}
+                                className="w-full pl-9 pr-4 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base bg-white appearance-none cursor-pointer"
+                            >
+                                <option value="all">All Projects</option>
+                                {projects.map(p => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                            </select>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <Filter className="w-3 h-3 text-gray-400" />
+                            </div>
+                        </div>
+
+                        {/* Page Filter */}
+                        <div className="relative">
+                            <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                            <select
+                                value={selectedPageId}
+                                onChange={(e) => {
+                                    setSelectedPageId(e.target.value);
+                                    setSelectedStepId('all');
+                                }}
+                                className="w-full pl-9 pr-4 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base bg-white appearance-none cursor-pointer"
+                            >
+                                <option value="all">All Pages</option>
+                                {filteredPages.map(p => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                            </select>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <Filter className="w-3 h-3 text-gray-400" />
+                            </div>
+                        </div>
+
+                        {/* Step Filter */}
+                        <div className="relative">
+                            <Layers className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                            <select
+                                value={selectedStepId}
+                                onChange={(e) => setSelectedStepId(e.target.value)}
+                                className="w-full pl-9 pr-4 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base bg-white appearance-none cursor-pointer"
+                                disabled={selectedProjectId === 'all'}
+                            >
+                                <option value="all">{selectedProjectId === 'all' ? 'Select project first' : 'All Steps'}</option>
+                                {availableSteps.map(s => (
+                                    <option key={s.id} value={s.id}>{s.step_name}</option>
+                                ))}
+                            </select>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <Filter className="w-3 h-3 text-gray-400" />
+                            </div>
+                        </div>
                     </div>
 
                     {/* Filters Row */}
@@ -107,7 +222,7 @@ export const Tasks = () => {
                             >
                                 <option value="all">All Status</option>
                                 <option value="todo">To Do</option>
-                                <option value="working">Working</option>
+                                <option value="work in progress">Work In Progress</option>
                                 <option value="finished">Finished</option>
                                 <option value="need_update">Need Update</option>
                                 <option value="under_review">Under Review</option>
@@ -174,7 +289,7 @@ export const Tasks = () => {
                     ))}
                 </div>
             ) : viewMode === 'board' ? (
-                <div className="w-full -mx-2 sm:mx-0">
+                <div className="w-full overflow-hidden">
                     <TaskBoard tasks={filteredTasks} onRefresh={loadTasks} />
                 </div>
             ) : (
