@@ -236,12 +236,26 @@ exports.createTask = async (req, res) => {
         const [page] = await db.execute('SELECT name FROM pages WHERE id = ?', [page_id]);
 
         // Create notification
+        const [projectInfo] = await db.execute(
+            `SELECT p.name as project_name FROM projects p 
+             JOIN pages pg ON pg.project_id = p.id 
+             WHERE pg.id = ?`,
+            [page_id]
+        );
+        const [stepInfo] = await db.execute('SELECT step_name FROM project_steps WHERE id = ?', [step_id]);
+
+        const projectName = projectInfo[0]?.project_name || 'Unknown Project';
+        const pageName = page[0]?.name || 'Unknown Page';
+        const stepName = stepInfo[0]?.step_name || 'Unknown Step';
+
+        const notificationMessage = `You have been assigned: [${projectName}] ${pageName} - ${stepName}`;
+
         await db.execute(
             `INSERT INTO notifications (user_id, message, type, related_id, related_type)
        VALUES (?, ?, ?, ?, ?)`,
             [
                 assigned_to,
-                `You have been assigned task: ${description}`,
+                notificationMessage,
                 'task_assigned',
                 result.insertId,
                 'task'
@@ -348,12 +362,25 @@ exports.updateTaskStatus = async (req, res) => {
         }
 
         // Notify manager
+        const [taskInfo] = await db.execute(
+            `SELECT p.name as project_name, pg.name as page_name, ps.step_name
+             FROM tasks t
+             JOIN pages pg ON t.page_id = pg.id
+             JOIN projects p ON pg.project_id = p.id
+             LEFT JOIN project_steps ps ON t.step_id = ps.id
+             WHERE t.id = ?`,
+            [id]
+        );
+
+        const info = taskInfo[0];
+        const taskIdentifier = `[${info?.project_name}] ${info?.page_name} - ${info?.step_name || 'Untitled'}`;
+
         await db.execute(
             `INSERT INTO notifications (user_id, message, type, related_id, related_type)
        VALUES (?, ?, ?, ?, ?)`,
             [
                 task.assigned_by,
-                `${task.artist_name} updated task "${task.description}" to ${status}`,
+                `${task.artist_name} updated task "${taskIdentifier}" to ${status}`,
                 'task_updated',
                 id,
                 'task'
@@ -453,12 +480,25 @@ exports.updateTask = async (req, res) => {
 
         // Notify artist if manager updates the task
         if (req.user.role !== 'artist' && task.assigned_to) {
+            const [updateInfo] = await db.execute(
+                `SELECT p.name as project_name, pg.name as page_name, ps.step_name
+                 FROM tasks t
+                 JOIN pages pg ON t.page_id = pg.id
+                 JOIN projects p ON pg.project_id = p.id
+                 LEFT JOIN project_steps ps ON t.step_id = ps.id
+                 WHERE t.id = ?`,
+                [id]
+            );
+
+            const info = updateInfo[0];
+            const taskIdentifier = `[${info?.project_name}] ${info?.page_name} - ${info?.step_name || 'Untitled'}`;
+
             await db.execute(
                 `INSERT INTO notifications (user_id, message, type, related_id, related_type)
         VALUES (?, ?, ?, ?, ?)`,
                 [
                     task.assigned_to,
-                    `Your task "${description || task.description}" has been updated by ${req.user.name}${status ? ` to ${status}` : ''}`,
+                    `Your task "${taskIdentifier}" has been updated by ${req.user.name}${status ? ` to ${status}` : ''}`,
                     'task_updated_by_manager',
                     id,
                     'task'
