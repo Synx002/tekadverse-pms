@@ -222,7 +222,7 @@ export const Tasks = () => {
                             >
                                 <option value="all">All Status</option>
                                 <option value="todo">To Do</option>
-                                <option value="working">Working</option>
+                                <option value="work in progress">Work In Progress</option>
                                 <option value="finished">Finished</option>
                                 <option value="need_update">Need Update</option>
                                 <option value="under_review">Under Review</option>
@@ -289,7 +289,7 @@ export const Tasks = () => {
                     ))}
                 </div>
             ) : viewMode === 'board' ? (
-                <div className="w-full">
+                <div className="w-full overflow-hidden">
                     <TaskBoard tasks={filteredTasks} onRefresh={loadTasks} />
                 </div>
             ) : (

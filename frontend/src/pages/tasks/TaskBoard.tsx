@@ -177,20 +177,20 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
                 })}
             </div>
 
-            {/* Desktop View - Horizontal Scroll */}
-            <div className="hidden lg:block overflow-x-auto pb-4 w-full">
-                <div className="flex gap-4 w-max min-w-full">
+            {/* Desktop View - Internal Horizontal Scroll */}
+            <div className="hidden lg:block overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                <div className="flex gap-4 min-w-full w-fit">
                     {columns.map((column) => {
                         const columnTasks = getTasksByStatus(column.status);
 
                         return (
                             <div
                                 key={column.status}
-                                className="flex-shrink-0 w-80"
+                                className="w-80 flex-shrink-0"
                                 onDragOver={handleDragOver}
                                 onDrop={(e) => handleDrop(e, column.status)}
                             >
-                                <div className={`${column.color} rounded-lg h-full flex flex-col overflow-hidden text-sm`}>
+                                <div className={`${column.color} rounded-lg h-full flex flex-col overflow-hidden text-sm border border-gray-200/50`}>
                                     {/* Desktop Header */}
                                     <div className="p-3 flex items-center justify-between font-semibold text-gray-700 bg-opacity-50">
                                         <div className="flex items-center gap-2">
