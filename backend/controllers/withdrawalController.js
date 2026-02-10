@@ -117,6 +117,7 @@ exports.getMyWithdrawals = async (req, res) => {
 
 // Manager/Admin updates withdrawal status (Approve/Reject)
 exports.updateWithdrawalStatus = async (req, res) => {
+    let connection;
     try {
         const { id } = req.params;
         const { status, admin_note } = req.body;
@@ -132,87 +133,119 @@ exports.updateWithdrawalStatus = async (req, res) => {
 
         const withdrawal = existing[0];
         if (withdrawal.status !== 'pending' && status !== 'pending') {
-            return res.status(400).json({ success: false, message: 'Order already processed' });
+            return res.status(400).json({ success: false, message: 'Withdrawal request already processed' });
         }
 
-        const connection = await db.getConnection();
+        connection = await db.getConnection();
         await connection.beginTransaction();
 
         try {
-            // Update withdrawal status
-            await connection.execute(
-                "UPDATE withdrawals SET status = ?, admin_note = ? WHERE id = ?",
-                [status, admin_note || null, id]
-            );
-
             if (status === 'approved') {
+                // VALIDASI: Cek saldo pending artis saat ini
+                const [currentEarnings] = await connection.execute(
+                    "SELECT COALESCE(SUM(amount), 0) as current_pending FROM artist_earnings WHERE artist_id = ? AND status = 'pending'",
+                    [withdrawal.artist_id]
+                );
+
+                const currentPending = parseFloat(currentEarnings[0].current_pending);
+                const requestedAmount = parseFloat(withdrawal.amount);
+
+                console.log('Current pending balance:', currentPending);
+                console.log('Requested withdrawal:', requestedAmount);
+
+                if (currentPending < requestedAmount) {
+                    throw new Error(`Insufficient balance. Artist has Rp ${currentPending.toLocaleString('id-ID')} but requested Rp ${requestedAmount.toLocaleString('id-ID')}`);
+                }
+
                 // Mark artist_earnings as paid
-                // We mark enough pending earnings to cover the withdrawal amount
-                let remainingToMark = parseFloat(withdrawal.amount);
+                let remainingToMark = Math.round(requestedAmount);
 
                 const [earnings] = await connection.execute(
-                    "SELECT id, amount FROM artist_earnings WHERE artist_id = ? AND status = 'pending' ORDER BY created_at ASC",
+                    "SELECT id, amount, artist_id, task_id FROM artist_earnings WHERE artist_id = ? AND status = 'pending' ORDER BY created_at ASC",
                     [withdrawal.artist_id]
                 );
 
                 for (const earning of earnings) {
                     if (remainingToMark <= 0) break;
 
-                    const earningAmount = parseFloat(earning.amount);
+                    const earningAmount = Math.round(parseFloat(earning.amount));
 
-                    // If the earning amount is exactly what's needed or less, mark it all as paid
                     if (earningAmount <= remainingToMark) {
+                        // This earning record is fully covered by the withdrawal
                         await connection.execute(
                             "UPDATE artist_earnings SET status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?",
                             [earning.id]
                         );
                         remainingToMark -= earningAmount;
                     } else {
-                        // If a single earning record is LARGER than the remaining withdrawal amount,
-                        // we need to split it: create a new 'paid' record and update the original to reduce its amount
+                        // This earning record is larger than what remains to be paid, so split it
+                        const newPendingAmount = earningAmount - remainingToMark;
 
-                        // Create a new 'paid' record for the withdrawn portion
-                        await connection.execute(
-                            `INSERT INTO artist_earnings (artist_id, task_id, amount, status, paid_at, created_at) 
-                             SELECT artist_id, task_id, ?, 'paid', CURRENT_TIMESTAMP, created_at 
-                             FROM artist_earnings WHERE id = ?`,
-                            [remainingToMark, earning.id]
-                        );
-
-                        // Update the original record to reduce its amount (keep it as 'pending')
-                        const newAmount = earningAmount - remainingToMark;
+                        // Update original to the remaining pending amount
                         await connection.execute(
                             "UPDATE artist_earnings SET amount = ? WHERE id = ?",
-                            [newAmount, earning.id]
+                            [newPendingAmount, earning.id]
+                        );
+
+                        // Insert new record for the paid portion
+                        await connection.execute(
+                            "INSERT INTO artist_earnings (artist_id, task_id, amount, status, paid_at) VALUES (?, ?, ?, 'paid', CURRENT_TIMESTAMP)",
+                            [earning.artist_id, earning.task_id, remainingToMark]
                         );
 
                         remainingToMark = 0;
                     }
                 }
+
+                // Verifikasi semua amount sudah di-mark
+                if (remainingToMark > 0) {
+                    throw new Error(`Failed to mark all earnings. Remaining: Rp ${remainingToMark.toLocaleString('id-ID')}`);
+                }
             }
 
-            await connection.commit();
+            // Update withdrawal status (untuk approved dan rejected)
+            await connection.execute(
+                "UPDATE withdrawals SET status = ?, admin_note = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                [status, admin_note || null, id]
+            );
 
-            // Notify artist
+            await connection.commit();
+        } catch (err) {
+            if (connection) await connection.rollback();
+            throw err;
+        } finally {
+            if (connection) connection.release();
+        }
+
+        // Post-transaction notifications and logging (non-fatal)
+        try {
             await createNotification(
                 withdrawal.artist_id,
                 'withdrawal_update',
-                `Your withdrawal request of Rp ${parseFloat(withdrawal.amount).toLocaleString('id-ID')} has been ${status}`,
+                `Your withdrawal request of Rp ${Number(withdrawal.amount).toLocaleString('id-ID')} has been ${status}`,
                 'finance',
                 id
             );
-
             await logActivity(req.user.id, `withdrawal_${status}`, 'withdrawal', id, withdrawal, { status, admin_note }, req.ip);
-
-            res.json({ success: true, message: `Withdrawal request ${status}` });
-        } catch (error) {
-            await connection.rollback();
-            throw error;
-        } finally {
-            connection.release();
+        } catch (postErr) {
+            console.error('Post-transaction tasks failed:', postErr);
         }
+
+        return res.json({
+            success: true,
+            message: `Withdrawal request ${status}`,
+            data: {
+                withdrawal_id: id,
+                status: status,
+                amount: withdrawal.amount
+            }
+        });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, message: 'Server error' });
+        console.error('Withdrawal update error:', error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || 'Server error',
+            details: error.sqlMessage || error.code
+        });
     }
 };
