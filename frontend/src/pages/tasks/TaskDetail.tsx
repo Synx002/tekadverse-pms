@@ -126,42 +126,97 @@ export const TaskDetail = () => {
                 {/* Main Content */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Task Header */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
-                            <div className="flex-1">
-                                <p className="text-sm font-medium text-blue-600 mb-1">{task.project?.name || task.project_name}</p>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(task.status)}`}>
-                                        {task.status.replace('_', ' ')}
-                                    </span>
-                                    <span className={`px-3 py-1 rounded-full text-sm font-medium bg-gray-100 ${getPriorityColor(task.priority)}`}>
-                                        {task.priority.toUpperCase()}
-                                    </span>
+                    <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                        {/* Top Banner */}
+                        <div className="h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+
+                        <div className="p-6">
+                            {/* Project Name Badge */}
+                            <div className="mb-4">
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700 border border-blue-200">
+                                    <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                                    {task.project?.name || task.project_name}
+                                </span>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+                                <div className="flex-1">
+                                    <h1 className="text-lg font-semibold text-gray-900 mb-4">
+                                        Task Details
+                                    </h1>
+
+                                    {/* Task Attributes Grid */}
+                                    <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+                                        {/* Status */}
+                                        <div>
+                                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">Status</p>
+                                            <span className={`inline-block px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm ${getStatusColor(task.status)}`}>
+                                                {task.status.replace('_', ' ').toUpperCase()}
+                                            </span>
+                                        </div>
+
+                                        {/* Priority */}
+                                        <div>
+                                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">Priority</p>
+                                            <span className={`inline-block px-3 py-1.5 rounded-lg text-xs font-bold bg-white shadow-sm  ${getPriorityColor(task.priority).replace('text-', 'border-')}`}>
+                                                <span className={getPriorityColor(task.priority)}>
+                                                    {task.priority.toUpperCase()}
+                                                </span>
+                                            </span>
+                                        </div>
+
+                                        {/* Page Name */}
+                                        {task.page_name && (
+                                            <div>
+                                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">Page</p>
+                                                <p className="text-sm font-medium text-gray-900">{task.page_name}</p>
+                                            </div>
+                                        )}
+
+                                        {/* Step Name */}
+                                        {task.step_name && (
+                                            <div>
+                                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">Step</p>
+                                                <p className="text-sm font-medium text-gray-900">{task.step_name}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="flex gap-2">
+                                    {user?.role !== 'artist' && (
+                                        <button
+                                            onClick={() => setIsEditModalOpen(true)}
+                                            className="group relative px-4 py-2 bg-white border-2 border-blue-500 text-blue-600 rounded-lg hover:bg-blue-500 hover:text-white transition-all duration-200 shadow-sm hover:shadow-md flex items-center gap-2"
+                                        >
+                                            <Edit className="w-4 h-4" />
+                                            <span className="font-medium">Edit</span>
+                                        </button>
+                                    )}
+
+                                    {user?.role !== 'artist' && (
+                                        <button
+                                            onClick={handleDelete}
+                                            className="group relative px-4 py-2 bg-white border-2 border-red-500 text-red-600 rounded-lg hover:bg-red-500 hover:text-white transition-all duration-200 shadow-sm hover:shadow-md flex items-center gap-2"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                            <span className="font-medium">Delete</span>
+                                        </button>
+                                    )}
                                 </div>
                             </div>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => setIsEditModalOpen(true)}
-                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                >
-                                    <Edit className="w-5 h-5" />
-                                </button>
-                                {user?.role !== 'artist' && (
-                                    <button
-                                        onClick={handleDelete}
-                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                    >
-                                        <Trash2 className="w-5 h-5" />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
 
-                        {task.description && (
-                            <div className="prose max-w-none">
-                                <p className="text-gray-700 whitespace-pre-wrap">{task.description}</p>
-                            </div>
-                        )}
+                            {/* Description */}
+                            {task.description && (
+                                <div className="mt-6 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                                    <p className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">Description</p>
+                                    <div className="prose max-w-none">
+                                        <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{task.description}</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Comments */}
@@ -246,16 +301,18 @@ export const TaskDetail = () => {
                 </div>
             </div>
 
-            {isEditModalOpen && (
-                <TaskFormModal
-                    task={task}
-                    onClose={() => setIsEditModalOpen(false)}
-                    onSuccess={() => {
-                        setIsEditModalOpen(false);
-                        loadTaskDetail();
-                    }}
-                />
-            )}
-        </div>
+            {
+                isEditModalOpen && (
+                    <TaskFormModal
+                        task={task}
+                        onClose={() => setIsEditModalOpen(false)}
+                        onSuccess={() => {
+                            setIsEditModalOpen(false);
+                            loadTaskDetail();
+                        }}
+                    />
+                )
+            }
+        </div >
     );
 };
