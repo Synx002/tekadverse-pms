@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { BASE_URL } from '../../api/axios';
 import { TaskFormModal } from '../../components/tasks/TaskFormModal';
 import { useAuthStore } from '../../store/authStore';
+import { DeleteTaskModal } from '../../components/tasks/DeleteTaskModal';
 
 export const TaskDetail = () => {
     const { id } = useParams<{ id: string }>();
@@ -21,6 +22,7 @@ export const TaskDetail = () => {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
     useEffect(() => {
         if (id) {
@@ -46,17 +48,17 @@ export const TaskDetail = () => {
         }
     };
 
-    const handleDelete = async () => {
-        if (!task || !window.confirm('Are you sure you want to delete this task?')) return;
+    // const handleDelete = async () => {
+    //     if (!task || !window.confirm('Are you sure you want to delete this task?')) return;
 
-        try {
-            await tasksApi.delete(task.id);
-            toast.success('Task deleted successfully');
-            navigate('/tasks');
-        } catch (error) {
-            toast.error('Failed to delete task');
-        }
-    };
+    //     try {
+    //         await tasksApi.delete(task.id);
+    //         toast.success('Task deleted successfully');
+    //         navigate('/tasks');
+    //     } catch (error) {
+    //         toast.error('Failed to delete task');
+    //     }
+    // };
 
     const handleSubmitComment = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -185,19 +187,18 @@ export const TaskDetail = () => {
 
                                 {/* Action Buttons */}
                                 <div className="flex gap-2">
-                                    {user?.role !== 'artist' && (
-                                        <button
-                                            onClick={() => setIsEditModalOpen(true)}
-                                            className="group relative px-4 py-2 bg-white border-2 border-blue-500 text-blue-600 rounded-lg hover:bg-blue-500 hover:text-white transition-all duration-200 shadow-sm hover:shadow-md flex items-center gap-2"
-                                        >
-                                            <Edit className="w-4 h-4" />
-                                            <span className="font-medium">Edit</span>
-                                        </button>
-                                    )}
+                                    <button
+                                        onClick={() => setIsEditModalOpen(true)}
+                                        className="group relative px-4 py-2 bg-white border-2 border-blue-500 text-blue-600 rounded-lg hover:bg-blue-500 hover:text-white transition-all duration-200 shadow-sm hover:shadow-md flex items-center gap-2"
+                                    >
+                                        <Edit className="w-4 h-4" />
+                                        <span className="font-medium">Edit</span>
+                                    </button>
+
 
                                     {user?.role !== 'artist' && (
                                         <button
-                                            onClick={handleDelete}
+                                            onClick={() => setIsDeleteModalOpen(true)}
                                             className="group relative px-4 py-2 bg-white border-2 border-red-500 text-red-600 rounded-lg hover:bg-red-500 hover:text-white transition-all duration-200 shadow-sm hover:shadow-md flex items-center gap-2"
                                         >
                                             <Trash2 className="w-4 h-4" />
@@ -309,6 +310,18 @@ export const TaskDetail = () => {
                         onSuccess={() => {
                             setIsEditModalOpen(false);
                             loadTaskDetail();
+                        }}
+                    />
+                )
+            }
+            {
+                isDeleteModalOpen && (
+                    <DeleteTaskModal
+                        task={task}
+                        onClose={() => setIsDeleteModalOpen(false)}
+                        onSuccess={() => {
+                            setIsDeleteModalOpen(false);
+    navigate('/tasks');
                         }}
                     />
                 )
