@@ -334,7 +334,7 @@ exports.updateTaskStatus = async (req, res) => {
 
         // Check if artist is trying to update a locked task
         if (req.user.role === 'artist') {
-            const lockedStatuses = ['need_update', 'under_review', 'approved', 'done'];
+            const lockedStatuses = ['under_review', 'approved', 'done'];
             if (lockedStatuses.includes(task.status)) {
                 return res.status(403).json({ message: 'Artists cannot update tasks in this status' });
             }
@@ -453,7 +453,7 @@ exports.updateTask = async (req, res) => {
         // Restrict artist to only update status
         if (req.user.role === 'artist') {
             // Check if artist is trying to update a locked task
-            const lockedStatuses = ['need_update', 'under_review', 'approved', 'done'];
+            const lockedStatuses = ['under_review', 'approved', 'done'];
             if (lockedStatuses.includes(task.status)) {
                 return res.status(403).json({ message: 'Artists cannot update tasks in this status' });
             }
