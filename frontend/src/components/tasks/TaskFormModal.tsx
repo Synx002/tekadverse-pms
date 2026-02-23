@@ -44,8 +44,8 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
     const { user } = useAuthStore();
     const isArtist = user?.role === 'artist';
 
-    // Check if task is locked for artist
-    const isLocked = isArtist && task && ['need_update', 'under_review', 'approved', 'done'].includes(task.status);
+    // Check if task is locked for artist (removed need_update from locked statuses)
+    const isLocked = isArtist && task && ['under_review', 'approved', 'done'].includes(task.status);
 
     const isEdit = !!task;
     const taskSchema = taskSchemaBase.refine(
@@ -109,8 +109,8 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
     }, []); // Only on mount
 
     useEffect(() => {
-        if (task && pages.length > 0) {
-            // Find project_id for the task's page
+        if (task) {
+            // Find project_id for the task's page if pages are loaded
             const taskPage = pages.find(p => p.id === task.page_id);
             reset({
                 project_id: taskPage?.project_id || 0,
@@ -353,11 +353,21 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                                         <option value="todo">To Do</option>
                                         <option value="work in progress">Work In Progress</option>
                                         <option value="finished">Finished</option>
-                                        <option value="need_update">Need Update</option>
-                                        <option value="under_review">Under Review</option>
-                                        <option value="approved">Approved</option>
-                                        <option value="done">Done</option>
-                                        <option value="dropped">Dropped</option>
+
+                                        {!isArtist ? (
+                                            <>
+                                                <option value="need_update">Need Update</option>
+                                                <option value="under_review">Under Review</option>
+                                                <option value="approved">Approved</option>
+                                                <option value="done">Done</option>
+                                                <option value="dropped">Dropped</option>
+                                            </>
+                                        ) : (
+                                            // For artists, if current status is not in the basic 3, still show it as an option so it's visible but they can change away from it
+                                            !['todo', 'work in progress', 'finished'].includes(task?.status || '') && (
+                                                <option value={task?.status}>{task?.status?.replace('_', ' ').toUpperCase()}</option>
+                                            )
+                                        )}
                                     </select>
                                 )}
                             </div>

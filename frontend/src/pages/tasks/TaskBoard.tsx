@@ -208,13 +208,13 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
                                             <div
                                                 key={task.id}
                                                 onClick={() => navigate(`/tasks/${task.id}`)}
-                                                draggable={!(user?.role === 'artist' && ['need_update', 'under_review', 'approved', 'done'].includes(task.status))}
+                                                draggable={!(user?.role === 'artist' && ['under_review', 'approved', 'done'].includes(task.status))}
                                                 onDragStart={(e) => handleDragStart(e, task.id)}
                                                 className={`bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer border-l-4 ${getPriorityColor(task.priority)} ${draggedTaskId === task.id ? 'opacity-50' : ''
-                                                    } ${user?.role === 'artist' && ['need_update', 'under_review', 'approved', 'done'].includes(task.status)
+                                                    } ${user?.role === 'artist' && ['under_review', 'approved', 'done'].includes(task.status)
                                                         ? 'cursor-default hover:shadow-none bg-gray-50'
                                                         : ''
-                                                    }`}
+                                                    } `}
                                             >
                                                 <div className="mb-2">
                                                     <h4 className="font-bold text-gray-900 text-sm leading-tight">{task.project?.name || task.project_name}</h4>
