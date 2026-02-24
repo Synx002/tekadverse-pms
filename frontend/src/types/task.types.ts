@@ -21,6 +21,7 @@ export interface Task {
     updated_at: string;
     project?: Project;
     page?: Page;
+    user?: User;
     assignee?: User;
     assigner?: User;
     assigned_to_name?: string;

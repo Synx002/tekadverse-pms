@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Plus, Filter, LayoutGrid, List, FolderOpen, FileText, Layers } from 'lucide-react';
+import { Plus, Filter, LayoutGrid, List, FolderOpen, FileText, Layers, UserSearch } from 'lucide-react';
 import { toast } from 'sonner';
 import { tasksApi } from '../../api/tasks.api';
 import { projectsApi } from '../../api/projects.api';
 import { pagesApi } from '../../api/pages.api';
+import { usersApi } from '../../api/users.api';
 import type { Task, TaskStatus } from '../../types/task.types';
 import type { Project } from '../../types/project.types';
 import type { Page, PageStep } from '../../types/page.types';
+import type { User } from '../../types/user.types';
 import { TaskBoard } from './TaskBoard';
 import { TaskList } from './TaskList';
 import { TaskFormModal } from '../../components/tasks/TaskFormModal';
@@ -16,6 +18,7 @@ import { useAuthStore } from '../../store/authStore';
 
 export const Tasks = () => {
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [pages, setPages] = useState<Page[]>([]);
     const [availableSteps, setAvailableSteps] = useState<PageStep[]>([]);
@@ -23,6 +26,7 @@ export const Tasks = () => {
     const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
     const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
     const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
+    const [selectedArtistId, setSelectedArtistId] = useState<string>('all');
     const [selectedPageId, setSelectedPageId] = useState<string>('all');
     const [selectedStepId, setSelectedStepId] = useState<string>('all');
     const [startDateFilter, setStartDateFilter] = useState('');
@@ -55,10 +59,12 @@ export const Tasks = () => {
 
     const loadFilters = async () => {
         try {
-            const [projectsRes, pagesRes] = await Promise.all([
+            const [projectsRes, pagesRes, usersRes] = await Promise.all([
                 projectsApi.getAll(),
-                pagesApi.getAll()
+                pagesApi.getAll(),
+                usersApi.getArtists()
             ]);
+            setUsers(usersRes.data || []);
             setProjects(projectsRes.data || []);
             setPages(pagesRes.data || []);
         } catch (error) {
@@ -146,7 +152,30 @@ export const Tasks = () => {
             <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4">
                 <div className="flex flex-col gap-3 sm:gap-4">
                     {/* Search/Filters Replacement */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        {/* Artist Filter */}
+                        <div className="relative">
+                            <UserSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                            <select
+                                value={selectedArtistId}
+                                onChange={(e) => {
+                                    setSelectedArtistId(e.target.value);
+                                    setSelectedProjectId('all');
+                                    setSelectedPageId('all');
+                                    setSelectedStepId('all');
+                                }}
+                                className="w-full pl-9 pr-4 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base bg-white appearance-none cursor-pointer"
+                            >
+                                <option value="all">All Artists</option>
+                                {users.map(u => (
+                                    <option key={u.id} value={u.id}>{u.name}</option>
+                                ))}
+                            </select>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <Filter className="w-3 h-3 text-gray-400" />
+                            </div>
+                        </div>
+
                         {/* Project Filter */}
                         <div className="relative">
                             <FolderOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -212,6 +241,7 @@ export const Tasks = () => {
 
                     {/* Filters Row */}
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+                        
                         {/* Status Filter */}
                         <div className="flex items-center gap-2 w-full sm:flex-1">
                             <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 flex-shrink-0" />
