@@ -13,6 +13,7 @@ import type { User } from '../../types/user.types';
 import { useAuthStore } from '../../store/authStore';
 import { projectsApi } from '../../api/projects.api';
 import type { Project } from '../../types/project.types';
+import { MarkAsDoneModal } from './MarkAsDoneModal';
 
 const taskSchemaBase = z.object({
     project_id: z.number().optional().or(z.literal(0)),
@@ -43,9 +44,14 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
     const [fetchingData, setFetchingData] = useState(true);
     const { user } = useAuthStore();
     const isArtist = user?.role === 'artist';
+    const [showDoneConfirm, setShowDoneConfirm] = useState(false);
+const [pendingFormData, setPendingFormData] = useState<TaskFormData | null>(null);
 
-    // Check if task is locked for artist (removed need_update from locked statuses)
-    const isLocked = isArtist && task && ['under_review', 'approved', 'done'].includes(task.status);
+    // Check if task is locked (artist restriction OR hard lock for 'done')
+    const isLocked = task && (
+        (isArtist && ['under_review', 'approved'].includes(task.status)) || 
+        task.status === 'done'
+    );
 
     const isEdit = !!task;
     const taskSchema = taskSchemaBase.refine(
@@ -165,6 +171,13 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
     }, [currentPageId, task?.id, isArtist]);
 
     const onSubmit = async (data: TaskFormData) => {
+        if (isEdit && task && data.status === 'done' && task.status !== 'done') {
+        setPendingFormData(data);
+        setShowDoneConfirm(true);
+        return;
+        }
+
+        await handleSave(data);
         try {
             setLoading(true);
 
@@ -190,6 +203,33 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
             setLoading(false);
         }
     };
+
+    const handleSave = async (data: TaskFormData) => {
+    try {
+        setLoading(true);
+
+        const formattedData = {
+            ...data,
+            step_id: data.step_id && data.step_id > 0 ? data.step_id : undefined,
+            description: data.description || undefined,
+            deadline: data.deadline || undefined,
+        };
+
+        if (isEdit && task) {
+            await tasksApi.update(task.id, formattedData as UpdateTaskData);
+            toast.success('Task updated successfully');
+        } else {
+            await tasksApi.create(formattedData as CreateTaskData);
+            toast.success('Task created successfully');
+        }
+
+        onSuccess();
+    } catch (error: any) {
+        toast.error(error.response?.data?.message || `Failed to ${isEdit ? 'update' : 'create'} task`);
+    } finally {
+        setLoading(false);
+    }
+};
 
     if (fetchingData) return null;
 
@@ -231,7 +271,7 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                         <textarea
                             {...register('description')}
                             rows={3}
-                            disabled={isArtist}
+                            disabled={isArtist || task?.status === 'done'}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
                             placeholder="Task details and requirements..."
                         />
@@ -250,7 +290,7 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                                 <select
                                     {...register('page_id', { valueAsNumber: true })}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
-                                    disabled={(!!pageId && !isEdit) || isArtist || (!watchedProjectId && !isEdit)}
+                                    disabled={(!!pageId && !isEdit) || isArtist || (!watchedProjectId && !isEdit) || task?.status === 'done'}
                                 >
                                     <option value={0}>Select Page</option>
                                     {filteredPages.map((p) => (
@@ -267,7 +307,7 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                                 <select
                                     {...register('step_id', { valueAsNumber: true })}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
-                                    disabled={isArtist || (!watchedPageId && !isEdit)}
+                                    disabled={isArtist || (!watchedPageId && !isEdit) || task?.status === 'done'}
                                 >
                                     <option value={0}>Select Step</option>
                                     {availableSteps.map((s) => (
@@ -296,7 +336,7 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                             ) : (
                                 <select
                                     {...register('assigned_to', { valueAsNumber: true })}
-                                    disabled={isArtist}
+                                    disabled={isArtist || task?.status === 'done'}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
                                 >
                                     <option value={0}>Select Artist</option>
@@ -312,7 +352,7 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                             <label className="text-sm font-medium text-gray-700">Priority</label>
                             <select
                                 {...register('priority')}
-                                disabled={isArtist}
+                                disabled={isArtist || task?.status === 'done'}
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
                             >
                                 <option value="low">Low</option>
@@ -330,7 +370,7 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                                 <input
                                     {...register('deadline')}
                                     type="date"
-                                    disabled={isArtist}
+                                    disabled={isArtist || task?.status === 'done'}
                                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
                                 />
                             </div>
@@ -384,14 +424,29 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                         </button>
                         <button
                             type="submit"
-                            disabled={loading}
+                            disabled={loading || task?.status === 'done'}
                             className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 cursor-pointer"
                         >
-                            {loading ? (isEdit ? 'Saving...' : 'Creating...') : (isEdit ? 'Save Changes' : 'Create Task')}
+                            {loading ? (isEdit ? 'Saving...' : 'Creating...') : (isEdit ? (task?.status === 'done' ? 'Locked (Done)' : 'Save Changes') : 'Create Task')}
                         </button>
                     </div>
                 </form>
             </div>
+            {showDoneConfirm && task && pendingFormData && (
+    <MarkAsDoneModal
+        task={task}
+        onClose={() => {
+            setShowDoneConfirm(false);
+            setPendingFormData(null);
+        }}
+        onSuccess={async () => {
+            setShowDoneConfirm(false);
+            if (pendingFormData) {
+                await handleSave(pendingFormData);
+            }
+        }}
+    />
+)}
         </div>
     );
 };

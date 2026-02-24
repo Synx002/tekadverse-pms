@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { tasksApi } from '../../api/tasks.api';
 import { toast } from 'sonner';
 import { useAuthStore } from '../../store/authStore';
+import { MarkAsDoneModal } from '../../components/tasks/MarkAsDoneModal';
 
 interface TaskBoardProps {
     tasks: Task[];
@@ -27,6 +28,7 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
     const { user } = useAuthStore();
     const [draggedTaskId, setDraggedTaskId] = useState<number | null>(null);
     const [collapsedStatuses, setCollapsedStatuses] = useState<TaskStatus[]>([]);
+    const [doneTask, setDoneTask] = useState<Task | null>(null);
 
     const toggleColumn = (status: TaskStatus) => {
         setCollapsedStatuses(prev =>
@@ -67,6 +69,12 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
 
         const task = tasks.find(t => t.id === draggedTaskId);
         if (!task || task.status === newStatus) return;
+
+        if (newStatus === 'done') {
+            setDoneTask(task);
+            setDraggedTaskId(null);
+            return;
+        }
 
         try {
             await tasksApi.updateStatus(draggedTaskId, newStatus);
@@ -208,10 +216,13 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
                                             <div
                                                 key={task.id}
                                                 onClick={() => navigate(`/tasks/${task.id}`)}
-                                                draggable={!(user?.role === 'artist' && ['under_review', 'approved', 'done'].includes(task.status))}
+                                                draggable={
+                                                    task.status !== 'done' && 
+                                                    !(user?.role === 'artist' && ['under_review', 'approved'].includes(task.status))
+                                                }
                                                 onDragStart={(e) => handleDragStart(e, task.id)}
                                                 className={`bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer border-l-4 ${getPriorityColor(task.priority)} ${draggedTaskId === task.id ? 'opacity-50' : ''
-                                                    } ${user?.role === 'artist' && ['under_review', 'approved', 'done'].includes(task.status)
+                                                    } ${task.status === 'done' || (user?.role === 'artist' && ['under_review', 'approved'].includes(task.status))
                                                         ? 'cursor-default hover:shadow-none bg-gray-50'
                                                         : ''
                                                     } `}
@@ -268,6 +279,16 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
                     })}
                 </div>
             </div>
+            {doneTask && (
+            <MarkAsDoneModal
+                task={doneTask}
+                onClose={() => setDoneTask(null)}
+                onSuccess={() => {
+                setDoneTask(null);
+                onRefresh?.();
+                }}
+            />
+            )}
         </div>
     );
 };

@@ -59,10 +59,10 @@ export const Tasks = () => {
 
     const loadFilters = async () => {
         try {
-            const [projectsRes, pagesRes, usersRes] = await Promise.all([
+            const [usersRes, projectsRes, pagesRes] = await Promise.all([
+                usersApi.getArtists(),
                 projectsApi.getAll(),
                 pagesApi.getAll(),
-                usersApi.getArtists()
             ]);
             setUsers(usersRes.data || []);
             setProjects(projectsRes.data || []);
@@ -88,8 +88,11 @@ export const Tasks = () => {
         const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
 
         // Resolve project_id from multiple sources
+        
         const page = pages.find(p => p.id === task.page_id);
         const taskProjectId = task.project?.id || task.page?.project_id || page?.project_id;
+
+        const matchesArtist = selectedArtistId === 'all' || task.assigned_to === Number(selectedArtistId);
 
         const matchesProject = selectedProjectId === 'all' ||
             taskProjectId === Number(selectedProjectId);
@@ -119,7 +122,7 @@ export const Tasks = () => {
             }
         }
 
-        return matchesStatus && matchesDate && matchesProject && matchesPage && matchesStep;
+        return matchesStatus && matchesDate && matchesProject && matchesPage && matchesStep && matchesArtist;
     });
 
     const filteredPages = selectedProjectId === 'all'
@@ -160,9 +163,6 @@ export const Tasks = () => {
                                 value={selectedArtistId}
                                 onChange={(e) => {
                                     setSelectedArtistId(e.target.value);
-                                    setSelectedProjectId('all');
-                                    setSelectedPageId('all');
-                                    setSelectedStepId('all');
                                 }}
                                 className="w-full pl-9 pr-4 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base bg-white appearance-none cursor-pointer"
                             >

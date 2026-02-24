@@ -332,6 +332,15 @@ exports.updateTaskStatus = async (req, res) => {
 
         const task = existing[0];
 
+        // 🔒 HARD LOCK: Task yang sudah DONE tidak boleh diubah statusnya lagi
+        if (task.status === 'done') {
+            return res.status(403).json({ 
+                message: 'Task yang sudah selesai (done) tidak dapat diubah statusnya' 
+            });
+        }
+
+        
+
         // Check if artist is trying to update a locked task
         if (req.user.role === 'artist') {
             const lockedStatuses = ['under_review', 'approved', 'done'];
@@ -419,6 +428,10 @@ exports.updateTask = async (req, res) => {
         }
 
         const task = existing[0];
+
+        if (task.status === 'done') {
+    return res.status(403).json({ message: 'Task yang sudah selesai (done) tidak dapat diubah' });
+}
 
         // Validate status if provided
         if (status) {
