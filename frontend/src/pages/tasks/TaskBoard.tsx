@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Task, TaskStatus } from '../../types/task.types';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -26,9 +26,28 @@ const columns: { status: TaskStatus; title: string; color: string }[] = [
 export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
     const navigate = useNavigate();
     const { user } = useAuthStore();
+
     const [draggedTaskId, setDraggedTaskId] = useState<number | null>(null);
     const [collapsedStatuses, setCollapsedStatuses] = useState<TaskStatus[]>([]);
     const [doneTask, setDoneTask] = useState<Task | null>(null);
+
+    const scrollRef = useRef<HTMLDivElement | null>(null);
+
+    const handleScroll = () => {
+        if (scrollRef.current) {
+            sessionStorage.setItem(
+                'taskboard-scroll-x',
+                scrollRef.current.scrollLeft.toString()
+            );
+        }
+    };
+
+    useLayoutEffect(() => {
+        const savedScroll = sessionStorage.getItem('taskboard-scroll-x');
+        if (savedScroll && scrollRef.current) {
+            scrollRef.current.scrollLeft = parseInt(savedScroll, 10);
+        }
+    }, []);
 
     const toggleColumn = (status: TaskStatus) => {
         setCollapsedStatuses(prev =>
@@ -186,7 +205,11 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
             </div>
 
             {/* Desktop View - Internal Horizontal Scroll */}
-            <div className="hidden lg:block overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+            <div 
+                ref={scrollRef}
+                onScroll={handleScroll}
+                className="hidden lg:block overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent"
+            >
                 <div className="flex gap-4 min-w-full w-fit">
                     {columns.map((column) => {
                         const columnTasks = getTasksByStatus(column.status);
