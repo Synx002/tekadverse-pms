@@ -11,12 +11,10 @@ import type { Task, CreateTaskData, UpdateTaskData } from '../../types/task.type
 import type { Page, PageStep } from '../../types/page.types';
 import type { User } from '../../types/user.types';
 import { useAuthStore } from '../../store/authStore';
-import { projectsApi } from '../../api/projects.api';
-import type { Project } from '../../types/project.types';
-import { MarkAsDoneModal } from './MarkAsDoneModal';
+import { SelectField } from '../ui/SelectedField';
 
 const taskSchemaBase = z.object({
-    project_id: z.number().optional().or(z.literal(0)),
+    title: z.string().min(3, 'Title must be at least 3 characters'),
     description: z.string().optional().or(z.literal('')),
     page_id: z.number().min(1, 'Please select a page'),
     step_id: z.number().optional(),
@@ -38,20 +36,14 @@ interface TaskFormModalProps {
 export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModalProps) => {
     const [loading, setLoading] = useState(false);
     const [pages, setPages] = useState<Page[]>([]);
-    const [projects, setProjects] = useState<Project[]>([]);
     const [artists, setArtists] = useState<User[]>([]);
     const [availableSteps, setAvailableSteps] = useState<PageStep[]>([]);
     const [fetchingData, setFetchingData] = useState(true);
     const { user } = useAuthStore();
     const isArtist = user?.role === 'artist';
-    const [showDoneConfirm, setShowDoneConfirm] = useState(false);
-const [pendingFormData, setPendingFormData] = useState<TaskFormData | null>(null);
 
-    // Check if task is locked (artist restriction OR hard lock for 'done')
-    const isLocked = task && (
-        (isArtist && ['under_review', 'approved'].includes(task.status)) || 
-        task.status === 'done'
-    );
+    // Check if task is locked for artist
+    const isLocked = isArtist && task && ['need_update', 'under_review', 'approved', 'done'].includes(task.status);
 
     const isEdit = !!task;
     const taskSchema = taskSchemaBase.refine(
@@ -65,11 +57,10 @@ const [pendingFormData, setPendingFormData] = useState<TaskFormData | null>(null
         watch,
         formState: { errors },
         reset,
-        setValue,
     } = useForm<TaskFormData>({
         resolver: zodResolver(taskSchema),
         defaultValues: {
-            project_id: 0,
+            title: '',
             description: '',
             page_id: pageId || 0,
             step_id: 0,
@@ -80,46 +71,14 @@ const [pendingFormData, setPendingFormData] = useState<TaskFormData | null>(null
         },
     });
 
-    const watchedProjectId = watch('project_id');
     const watchedPageId = watch('page_id');
-    const currentPageId = pageId || watchedPageId || task?.page_id;
-
-    // Filter pages by selected project
-    const filteredPages = pages.filter(p => !watchedProjectId || p.project_id === watchedProjectId);
-
-    const loadData = async () => {
-        if (isArtist) {
-            setFetchingData(false);
-            return;
-        }
-
-        try {
-            setFetchingData(true);
-            const [projectsRes, pagesRes, artistsRes] = await Promise.all([
-                projectsApi.getAll(),
-                pagesApi.getAll(),
-                usersApi.getArtists(),
-            ]);
-            setProjects(projectsRes.data || []);
-            setPages(pagesRes.data || []);
-            setArtists(artistsRes.data || []);
-        } catch (error) {
-            toast.error('Failed to load projects or artists');
-        } finally {
-            setFetchingData(false);
-        }
-    };
+    const currentPageId = pageId || watchedPageId || task?.page_id || 0;
 
     useEffect(() => {
         loadData();
-    }, []); // Only on mount
-
-    useEffect(() => {
         if (task) {
-            // Find project_id for the task's page if pages are loaded
-            const taskPage = pages.find(p => p.id === task.page_id);
             reset({
-                project_id: taskPage?.project_id || 0,
+                title: task.title,
                 description: task.description || '',
                 page_id: task.page_id,
                 step_id: task.step_id || 0,
@@ -129,29 +88,7 @@ const [pendingFormData, setPendingFormData] = useState<TaskFormData | null>(null
                 status: task.status,
             });
         }
-    }, [task, reset, pages]); // Sync with task ONLY when task OR pages load
-
-    // Handle initial pageId from props
-    useEffect(() => {
-        if (pageId && pages.length > 0) {
-            const page = pages.find(p => p.id === pageId);
-            if (page) {
-                setValue('project_id', page.project_id);
-                setValue('page_id', page.id);
-            }
-        }
-    }, [pageId, pages, setValue]);
-
-    // Reset page_id if project_id changes and current page doesn't belong to project
-    useEffect(() => {
-        if (watchedProjectId && watchedPageId && !isEdit) { // Only reset if NOT editing (prevent overwrite on load)
-            const page = pages.find(p => p.id === watchedPageId);
-            if (page && page.project_id !== watchedProjectId) {
-                setValue('page_id', 0);
-                setValue('step_id', 0);
-            }
-        }
-    }, [watchedProjectId, pages, setValue, watchedPageId, isEdit]);
+    }, [task, reset]);
 
     // Fetch available steps when page is selected
     useEffect(() => {
@@ -170,14 +107,28 @@ const [pendingFormData, setPendingFormData] = useState<TaskFormData | null>(null
         loadSteps();
     }, [currentPageId, task?.id, isArtist]);
 
-    const onSubmit = async (data: TaskFormData) => {
-        if (isEdit && task && data.status === 'done' && task.status !== 'done') {
-        setPendingFormData(data);
-        setShowDoneConfirm(true);
-        return;
+    const loadData = async () => {
+        if (isArtist) {
+            setFetchingData(false);
+            return;
         }
 
-        await handleSave(data);
+        try {
+            setFetchingData(true);
+            const [pagesRes, artistsRes] = await Promise.all([
+                pagesApi.getAll(),
+                usersApi.getArtists(),
+            ]);
+            setPages(pagesRes.data || []);
+            setArtists(artistsRes.data || []);
+        } catch (error) {
+            toast.error('Failed to load projects or artists');
+        } finally {
+            setFetchingData(false);
+        }
+    };
+
+    const onSubmit = async (data: TaskFormData) => {
         try {
             setLoading(true);
 
@@ -204,33 +155,6 @@ const [pendingFormData, setPendingFormData] = useState<TaskFormData | null>(null
         }
     };
 
-    const handleSave = async (data: TaskFormData) => {
-    try {
-        setLoading(true);
-
-        const formattedData = {
-            ...data,
-            step_id: data.step_id && data.step_id > 0 ? data.step_id : undefined,
-            description: data.description || undefined,
-            deadline: data.deadline || undefined,
-        };
-
-        if (isEdit && task) {
-            await tasksApi.update(task.id, formattedData as UpdateTaskData);
-            toast.success('Task updated successfully');
-        } else {
-            await tasksApi.create(formattedData as CreateTaskData);
-            toast.success('Task created successfully');
-        }
-
-        onSuccess();
-    } catch (error: any) {
-        toast.error(error.response?.data?.message || `Failed to ${isEdit ? 'update' : 'create'} task`);
-    } finally {
-        setLoading(false);
-    }
-};
-
     if (fetchingData) return null;
 
     return (
@@ -249,29 +173,23 @@ const [pendingFormData, setPendingFormData] = useState<TaskFormData | null>(null
                 </div>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-5">
-                    {!isArtist && (
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Project</label>
-                            <select
-                                {...register('project_id', { valueAsNumber: true })}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
-                                disabled={(!!pageId && !isEdit) || isArtist || isEdit}
-                            >
-                                <option value={0}>Select Project</option>
-                                {projects.map((p) => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
-
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-700">Task Title</label>
+                        <input
+                            {...register('title')}
+                            disabled={isArtist}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                            placeholder="Sketch"
+                        />
+                        {errors.title && <p className="text-xs text-red-500">{errors.title.message}</p>}
+                    </div>
 
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-700">Description</label>
                         <textarea
                             {...register('description')}
                             rows={3}
-                            disabled={isArtist || task?.status === 'done'}
+                            disabled={isArtist}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
                             placeholder="Task details and requirements..."
                         />
@@ -279,7 +197,6 @@ const [pendingFormData, setPendingFormData] = useState<TaskFormData | null>(null
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Page</label>
                             {isArtist ? (
                                 <input
                                     value={task?.page_name || 'Current Page'}
@@ -287,27 +204,23 @@ const [pendingFormData, setPendingFormData] = useState<TaskFormData | null>(null
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
                                 />
                             ) : (
-                                <select
+                                <SelectField label="Page" {...register('page_id', { valueAsNumber: true })} error={errors.page_id?.message}
                                     {...register('page_id', { valueAsNumber: true })}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
-                                    disabled={(!!pageId && !isEdit) || isArtist || (!watchedProjectId && !isEdit) || task?.status === 'done'}
+                                    disabled={(!!pageId && !isEdit) || isArtist}
                                 >
                                     <option value={0}>Select Page</option>
-                                    {filteredPages.map((p) => (
-                                        <option key={p.id} value={p.id}>{p.name}</option>
-                                    ))}
-                                </select>
+                                    {pages.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                </SelectField>
                             )}
                             {errors.page_id && <p className="text-xs text-red-500">{errors.page_id.message}</p>}
                         </div>
 
-                        {!isArtist && (
+                        {!isArtist && currentPageId > 0 && (
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Step</label>
-                                <select
+                                <SelectField label="Step" {...register('step_id', { valueAsNumber: true })} error={errors.step_id?.message}
                                     {...register('step_id', { valueAsNumber: true })}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
-                                    disabled={isArtist || (!watchedPageId && !isEdit) || task?.status === 'done'}
+                                    disabled={isArtist}
                                 >
                                     <option value={0}>Select Step</option>
                                     {availableSteps.map((s) => (
@@ -315,18 +228,17 @@ const [pendingFormData, setPendingFormData] = useState<TaskFormData | null>(null
                                             {s.step_number}. {s.step_name}
                                         </option>
                                     ))}
-                                </select>
-                                {/* {availableSteps.length === 0 && (
+                                </SelectField>
+                                {availableSteps.length === 0 && currentPageId > 0 && (
                                     <p className="text-xs text-amber-600">
                                         No steps available. Ensure the page has steps defined, and that not all steps are already assigned.
                                     </p>
-                                )} */}
+                                )}
                                 {errors.step_id && <p className="text-xs text-red-500">{errors.step_id.message}</p>}
                             </div>
                         )}
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Assign To Artist</label>
                             {isArtist ? (
                                 <input
                                     value={task?.assigned_to_name || task?.assignee?.name || 'Me'}
@@ -334,32 +246,31 @@ const [pendingFormData, setPendingFormData] = useState<TaskFormData | null>(null
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
                                 />
                             ) : (
-                                <select
+                                <SelectField label="Assign To Artist" {...register('assigned_to', { valueAsNumber: true })} error={errors.assigned_to?.message}
                                     {...register('assigned_to', { valueAsNumber: true })}
-                                    disabled={isArtist || task?.status === 'done'}
+                                    disabled={isArtist}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
                                 >
                                     <option value={0}>Select Artist</option>
                                     {artists.map((a) => (
                                         <option key={a.id} value={a.id}>{a.name}</option>
                                     ))}
-                                </select>
+                                </SelectField>
                             )}
                             {errors.assigned_to && <p className="text-xs text-red-500">{errors.assigned_to.message}</p>}
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Priority</label>
-                            <select
+                            <SelectField label="Priority" {...register('priority')} error={errors.priority?.message}
                                 {...register('priority')}
-                                disabled={isArtist || task?.status === 'done'}
+                                disabled={isArtist}
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
                             >
                                 <option value="low">Low</option>
                                 <option value="medium">Medium</option>
                                 <option value="high">High</option>
                                 <option value="urgent">Urgent</option>
-                            </select>
+                            </SelectField>
                             {errors.priority && <p className="text-xs text-red-500">{errors.priority.message}</p>}
                         </div>
 
@@ -370,7 +281,7 @@ const [pendingFormData, setPendingFormData] = useState<TaskFormData | null>(null
                                 <input
                                     {...register('deadline')}
                                     type="date"
-                                    disabled={isArtist || task?.status === 'done'}
+                                    disabled={isArtist}
                                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
                                 />
                             </div>
@@ -391,23 +302,13 @@ const [pendingFormData, setPendingFormData] = useState<TaskFormData | null>(null
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                     >
                                         <option value="todo">To Do</option>
-                                        <option value="work in progress">Work In Progress</option>
+                                        <option value="work in progress">Working</option>
                                         <option value="finished">Finished</option>
-
-                                        {!isArtist ? (
-                                            <>
-                                                <option value="need_update">Need Update</option>
-                                                <option value="under_review">Under Review</option>
-                                                <option value="approved">Approved</option>
-                                                <option value="done">Done</option>
-                                                <option value="dropped">Dropped</option>
-                                            </>
-                                        ) : (
-                                            // For artists, if current status is not in the basic 3, still show it as an option so it's visible but they can change away from it
-                                            !['todo', 'work in progress', 'finished'].includes(task?.status || '') && (
-                                                <option value={task?.status}>{task?.status?.replace('_', ' ').toUpperCase()}</option>
-                                            )
-                                        )}
+                                        <option value="need_update">Need Update</option>
+                                        <option value="under_review">Under Review</option>
+                                        <option value="approved">Approved</option>
+                                        <option value="done">Done</option>
+                                        <option value="dropped">Dropped</option>
                                     </select>
                                 )}
                             </div>
@@ -424,29 +325,14 @@ const [pendingFormData, setPendingFormData] = useState<TaskFormData | null>(null
                         </button>
                         <button
                             type="submit"
-                            disabled={loading || task?.status === 'done'}
+                            disabled={loading}
                             className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 cursor-pointer"
                         >
-                            {loading ? (isEdit ? 'Saving...' : 'Creating...') : (isEdit ? (task?.status === 'done' ? 'Locked (Done)' : 'Save Changes') : 'Create Task')}
+                            {loading ? (isEdit ? 'Saving...' : 'Creating...') : (isEdit ? 'Save Changes' : 'Create Task')}
                         </button>
                     </div>
                 </form>
             </div>
-            {showDoneConfirm && task && pendingFormData && (
-    <MarkAsDoneModal
-        task={task}
-        onClose={() => {
-            setShowDoneConfirm(false);
-            setPendingFormData(null);
-        }}
-        onSuccess={async () => {
-            setShowDoneConfirm(false);
-            if (pendingFormData) {
-                await handleSave(pendingFormData);
-            }
-        }}
-    />
-)}
         </div>
     );
 };

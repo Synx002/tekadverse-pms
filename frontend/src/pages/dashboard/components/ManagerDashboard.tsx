@@ -24,9 +24,6 @@ export const ManagerDashboard = ({ projects, tasks, payouts, loading }: ManagerD
     const tasksToReview = tasks.filter(t => ['under_review', 'finished'].includes(t.status));
     const urgentTasks = tasks.filter(t => t.priority === 'urgent' && !['done', 'approved', 'dropped'].includes(t.status));
 
-    const formatCurrency = (amount: number | string | undefined) => {
-        return `Rp ${Number(amount || 0).toLocaleString('id-ID')}`;
-    };
     const stats = [
         {
             title: 'Active Projects',
@@ -54,7 +51,7 @@ export const ManagerDashboard = ({ projects, tasks, payouts, loading }: ManagerD
     const getStatusColor = (status: string) => {
         const colors: Record<string, string> = {
             todo: 'bg-gray-100 text-gray-800',
-            'work in progress': 'bg-blue-100 text-blue-800',
+            working: 'bg-blue-100 text-blue-800',
             finished: 'bg-indigo-100 text-indigo-800',
             need_update: 'bg-yellow-100 text-yellow-800',
             under_review: 'bg-purple-100 text-purple-800',
@@ -105,7 +102,7 @@ export const ManagerDashboard = ({ projects, tasks, payouts, loading }: ManagerD
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <p className="text-xs font-medium text-gray-500 mb-1">{task.project_name}</p>
-                                        <h3 className="font-medium text-gray-900">{task.step_name || task.description}</h3>
+                                        <h3 className="font-medium text-gray-900">{task.title}</h3>
                                         <p className="text-xs text-gray-400 mt-1">Artist: {task.assigned_to_name}</p>
                                     </div>
                                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getStatusColor(task.status)}`}>
@@ -126,11 +123,11 @@ export const ManagerDashboard = ({ projects, tasks, payouts, loading }: ManagerD
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                     <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-amber-50">
                         <h2 className="font-semibold text-amber-900 flex items-center gap-2">
-                            <Banknote size={18} /> Payment to Artist
+                            <Banknote size={18} /> Pembayaran ke Artist
                         </h2>
                         {payouts && payouts.total_to_pay > 0 && (
                             <span className="text-sm font-bold text-amber-800">
-                                Total: {formatCurrency(payouts.total_to_pay)}
+                                Total: Rp {payouts.total_to_pay.toLocaleString('id-ID')}
                             </span>
                         )}
                     </div>
@@ -150,7 +147,7 @@ export const ManagerDashboard = ({ projects, tasks, payouts, loading }: ManagerD
                                             <td className="px-4 py-3 font-medium text-gray-900">{p.artist_name}</td>
                                             <td className="px-4 py-3 text-gray-600">{p.artist_email}</td>
                                             <td className="px-4 py-3 text-right font-semibold text-amber-700">
-                                                {formatCurrency(p.total_pending)}
+                                                Rp {p.total_pending.toLocaleString('id-ID')}
                                             </td>
                                         </tr>
                                     ))}
@@ -158,7 +155,7 @@ export const ManagerDashboard = ({ projects, tasks, payouts, loading }: ManagerD
                             </table>
                         ) : (
                             <div className="p-8 text-center text-gray-500 italic">
-                                No pending payments at the moment. Funds will be available once the task status is Done/Approved.
+                                Tidak ada pembayaran tertunda. Uang akan muncul saat task status Done/Approved.
                             </div>
                         )}
                     </div>

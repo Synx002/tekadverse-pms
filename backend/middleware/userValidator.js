@@ -12,7 +12,7 @@ const createUserValidator = [
 const updateUserValidator = [
     body('name').optional().notEmpty().withMessage('Name cannot be empty').trim(),
     body('email').optional().isEmail().withMessage('Valid email is required').normalizeEmail(),
-    body('password').optional().isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+    body('password').optional({ checkFalsy: true }).isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
     body('role').optional().isIn(['admin', 'manager', 'artist']).withMessage('Invalid role'),
     validate
 ];

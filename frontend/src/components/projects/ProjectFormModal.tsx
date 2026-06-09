@@ -8,6 +8,7 @@ import { projectsApi } from '../../api/projects.api';
 import type { Project, CreateProjectData, ProjectStatus } from '../../types/project.types';
 import type { Client } from '../../types/client.types';
 import type { PageStep } from '../../types/page.types';
+import { SelectField } from '../ui/SelectedField';
 
 const projectSchema = z.object({
     client_id: z.number().min(1, 'Client is required'),
@@ -148,39 +149,25 @@ export const ProjectFormModal = ({ project, clients, onClose, onSuccess }: Proje
                 <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-5 overflow-y-auto flex-1">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Client *
-                            </label>
-                            <select
-                                {...register('client_id', { valueAsNumber: true })}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                            <SelectField label="Client *" {...register('client_id', { valueAsNumber: true })} error={errors.client_id?.message}
                             >
                                 <option value={0}>Select client</option>
-                                {clients.map((client) => (
-                                    <option key={client.id} value={client.id}>
-                                        {client.name}
-                                    </option>
-                                ))}
-                            </select>
-                            {errors.client_id && (
-                                <p className="mt-1 text-sm text-red-600">{errors.client_id.message}</p>
-                            )}
+                                {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+                            </SelectField>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Status
-                            </label>
-                            <select
-                                {...register('status')}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                            >
+                            <div className="relative">
+                                <SelectField 
+                                label="Status" {...register('status')} error={errors.status?.message}
+                                >
                                 <option value="planning">Planning</option>
                                 <option value="active">Active</option>
                                 <option value="on_hold">On Hold</option>
                                 <option value="completed">Completed</option>
                                 <option value="cancelled">Cancelled</option>
-                            </select>
+                                </SelectField >
+                            </div>
                         </div>
                     </div>
 

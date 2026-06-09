@@ -7,6 +7,14 @@ export interface ArtistEarnings {
     total_pending: number;
 }
 
+export interface GlobalFinanceStats {
+    total_earned: number;
+    total_paid: number;
+    total_pending: number;
+    pending_requests: number;
+    pending_requests_amount: number;
+}
+
 export interface PayoutItem {
     artist_id: number;
     artist_name: string;
@@ -17,14 +25,6 @@ export interface PayoutItem {
 export interface PayoutsResponse {
     payouts: PayoutItem[];
     total_to_pay: number;
-}
-
-export interface GlobalFinanceStats {
-    total_earned: number;
-    total_paid: number;
-    total_pending: number;
-    pending_requests: number;
-    pending_requests_amount: number;
 }
 
 export const earningsApi = {

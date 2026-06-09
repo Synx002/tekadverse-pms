@@ -9,6 +9,7 @@ export interface Task {
     id: number;
     page_id: number;
     step_id: number | null;
+    title: string;
     description: string | null;
     assigned_to: number;
     assigned_by: number;
@@ -21,7 +22,6 @@ export interface Task {
     updated_at: string;
     project?: Project;
     page?: Page;
-    user?: User;
     assignee?: User;
     assigner?: User;
     assigned_to_name?: string;
@@ -40,6 +40,7 @@ export interface Task {
 export interface CreateTaskData {
     page_id: number;
     step_id: number;  // Required: each task must be assigned to a step
+    title: string;
     description?: string;
     assigned_to: number;
     priority?: TaskPriority;
@@ -48,6 +49,7 @@ export interface CreateTaskData {
 
 export interface UpdateTaskData {
     step_id?: number;
+    title?: string;
     description?: string;
     assigned_to?: number;
     status?: TaskStatus;

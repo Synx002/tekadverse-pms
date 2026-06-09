@@ -12,7 +12,7 @@ const userSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
     email: z.string().email('Invalid email address'),
     role: z.enum(['admin', 'manager', 'artist']),
-    password: z.string().optional(),
+    password: z.string().min(6, 'Password must be at least 6 characters').optional().or(z.literal('')),
     is_active: z.boolean(),
     bank_name: z.string().optional().nullable(),
     bank_account_number: z.string().optional().nullable(),
@@ -92,12 +92,15 @@ export const UserFormModal = ({ user, onClose, onSuccess }: UserFormModalProps) 
     const onSubmit = async (data: UserFormData) => {
         try {
             setLoading(true);
-            const userData = {
+            const userData: any = {
                 ...data,
                 profile_picture: profilePicture || undefined,
             };
 
             if (isEdit && user) {
+                if (!userData.password) {
+                    delete userData.password;
+                }
                 await usersApi.update(user.id, userData as UpdateUserData);
                 toast.success('User updated successfully');
             } else {
