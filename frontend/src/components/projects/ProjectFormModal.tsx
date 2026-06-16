@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { projectsApi } from '../../api/projects.api';
 import type { Project, CreateProjectData, ProjectStatus } from '../../types/project.types';
 import type { Client } from '../../types/client.types';
-import type { PageStep } from '../../types/page.types';
+import type { ProjectStep } from '../../types/project.types';
 import { SelectField } from '../ui/SelectedField';
 
 const projectSchema = z.object({
@@ -61,9 +61,9 @@ export const ProjectFormModal = ({ project, clients, onClose, onSuccess }: Proje
             });
             if (project.steps) {
                 setSteps(project.steps.map(s => ({
-                    id: s.id,
+                    id: s.id != null ? Number(s.id) : undefined,
                     step_name: s.step_name,
-                    price: s.price ?? 0
+                    price: Number(s.price) || 0,
                 })));
             }
         }
@@ -100,11 +100,11 @@ export const ProjectFormModal = ({ project, clients, onClose, onSuccess }: Proje
 
         try {
             setLoading(true);
-            const preparedSteps: PageStep[] = steps.map((step, index) => ({
-                ...(step.id && { id: step.id }),
+            const preparedSteps: ProjectStep[] = steps.map((step, index) => ({
+                ...(step.id != null && { id: Number(step.id) }),
                 step_number: index + 1,
                 step_name: step.step_name.trim(),
-                price: step.price
+                price: step.price,
             }));
 
             const payload: CreateProjectData = {

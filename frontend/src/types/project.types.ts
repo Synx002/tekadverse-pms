@@ -1,7 +1,16 @@
 import type { Client } from "./client.types";
-import type { Page, PageStep } from "./page.types";
+import type { Page } from "./page.types";
 
 export type ProjectStatus = 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled';
+
+export interface ProjectStep {
+    id?: number;
+    project_id?: number;
+    step_number: number;
+    step_name: string;
+    price?: number;
+    created_at?: string;
+}
 
 export interface Project {
     id: number;
@@ -15,12 +24,12 @@ export interface Project {
     client_name?: string;
     pages?: Page[];
     pages_count?: number;
-    steps?: PageStep[];
+    steps?: ProjectStep[];
 }
 
 export interface CreateProjectData {
     client_id: number;
     name: string;
     status: ProjectStatus;
-    steps?: PageStep[];
+    steps?: ProjectStep[];
 }

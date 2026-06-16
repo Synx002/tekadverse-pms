@@ -1,5 +1,6 @@
 const db = require('../config/database');
 const { logActivity } = require('../utils/logger');
+const { repairProjectTaskSteps } = require('../utils/repairTaskSteps');
 
 // Get all projects for a client
 exports.getAllProjects = async (req, res) => {
@@ -112,7 +113,7 @@ exports.getProjectById = async (req, res) => {
             data: {
                 ...projects[0],
                 pages,
-                steps
+                steps: steps.map(s => ({ ...s, price: parseFloat(s.price) || 0 })),
             }
         });
     } catch (error) {
@@ -190,31 +191,54 @@ exports.updateProject = async (req, res) => {
             [name, status, id]
         );
 
-        // Update steps if provided
+        // Update steps in-place — jangan DELETE project_steps (FK RESTRICT / SET NULL)
         if (steps && Array.isArray(steps)) {
-            // Approach: Delete existing steps and re-insert 
-            // Better would be to sync by ID, but replacing is simpler and works for fixed pipelines
-            await connection.execute('DELETE FROM project_steps WHERE project_id = ?', [id]);
-
             for (const step of steps) {
                 const price = step.price != null ? parseFloat(step.price) : 0;
-                await connection.execute(
-                    `INSERT INTO project_steps (project_id, step_number, step_name, price)
-                     VALUES (?, ?, ?, ?)`,
-                    [id, step.step_number, step.step_name, price]
-                );
+                const stepId = step.id != null ? parseInt(step.id, 10) : NaN;
+
+                if (!Number.isNaN(stepId) && stepId > 0) {
+                    await connection.execute(
+                        `UPDATE project_steps SET step_name = ?, step_number = ?, price = ?
+                         WHERE id = ? AND project_id = ?`,
+                        [step.step_name, step.step_number, price, stepId, id]
+                    );
+                } else {
+                    await connection.execute(
+                        `INSERT INTO project_steps (project_id, step_number, step_name, price)
+                         VALUES (?, ?, ?, ?)`,
+                        [id, step.step_number, step.step_name, price]
+                    );
+                }
             }
         }
 
         await connection.commit();
 
-        await logActivity(req.user.id, 'updated_project', 'project', id, existing[0], { name, status, steps_count: steps?.length }, req.ip);
+        // Repair task links di luar transaksi utama — jangan gagalkan save project
+        if (steps && Array.isArray(steps)) {
+            try {
+                await repairProjectTaskSteps(id);
+            } catch (repairErr) {
+                console.error('repairProjectTaskSteps:', repairErr.message);
+            }
+        }
+
+        try {
+            await logActivity(req.user.id, 'updated_project', 'project', id, existing[0], { name, status, steps_count: steps?.length }, req.ip);
+        } catch (logErr) {
+            console.error('logActivity:', logErr.message);
+        }
 
         res.json({ success: true, message: 'Project updated successfully' });
     } catch (error) {
         await connection.rollback();
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        console.error('updateProject error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        });
     } finally {
         connection.release();
     }

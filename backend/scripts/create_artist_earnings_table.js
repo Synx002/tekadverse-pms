@@ -26,7 +26,7 @@ async function runMigration() {
         const [existingTasks] = await db.execute(`
             SELECT t.id, t.assigned_to, COALESCE(ps.price, 0) as amount
             FROM tasks t
-            LEFT JOIN page_steps ps ON t.step_id = ps.id
+            LEFT JOIN project_steps ps ON t.step_id = ps.id
             WHERE t.status IN ('done', 'approved') AND t.assigned_to IS NOT NULL
         `);
         for (const row of existingTasks) {

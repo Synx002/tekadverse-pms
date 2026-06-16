@@ -7,7 +7,8 @@ import { pagesApi } from '../../api/pages.api';
 import { usersApi } from '../../api/users.api';
 import type { Task, TaskStatus } from '../../types/task.types';
 import type { Project } from '../../types/project.types';
-import type { Page, PageStep } from '../../types/page.types';
+import type { Page } from '../../types/page.types';
+import type { ProjectStep } from '../../types/project.types';
 import type { User } from '../../types/user.types';
 import { TaskBoard } from './TaskBoard';
 import { TaskList } from './TaskList';
@@ -21,7 +22,7 @@ export const Tasks = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [pages, setPages] = useState<Page[]>([]);
-    const [availableSteps, setAvailableSteps] = useState<PageStep[]>([]);
+    const [availableSteps, setAvailableSteps] = useState<ProjectStep[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
     const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');

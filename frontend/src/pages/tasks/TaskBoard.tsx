@@ -150,8 +150,12 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
                                                 className={`bg-white rounded-lg p-4 shadow-sm active:shadow-md transition-shadow cursor-pointer border-l-4 ${getPriorityColor(task.priority)}`}
                                             >
                                                 <div className="mb-2">
-                                                    <h4 className="font-bold text-gray-900 leading-tight">{task.project?.name || task.project_name}</h4>
+                                                    <h4 className="font-bold text-gray-900 leading-tight">
+                                                        {task.step_name || '—'}
+                                                    </h4>
                                                     <div className="flex flex-wrap items-center gap-1.5 mt-1 text-sm">
+                                                        <span className="text-gray-500">{task.project?.name || task.project_name}</span>
+                                                        <span className="text-gray-300">/</span>
                                                         <span className="font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">{task.page?.name || task.page_name || 'No Page'}</span>
                                                         {task.step_name && (
                                                             <>
@@ -251,8 +255,12 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
                                                     } `}
                                             >
                                                 <div className="mb-2">
-                                                    <h4 className="font-bold text-gray-900 text-sm leading-tight">{task.project?.name || task.project_name}</h4>
+                                                    <h4 className="font-bold text-gray-900 text-sm leading-tight">
+                                                        {task.step_name || '—'}
+                                                    </h4>
                                                     <div className="flex flex-wrap items-center gap-1.5 mt-1 text-xs">
+                                                        <span className="text-gray-500">{task.project?.name || task.project_name}</span>
+                                                        <span className="text-gray-300">/</span>
                                                         <span className="font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">{task.page?.name || task.page_name || 'No Page'}</span>
                                                         {task.step_name && (
                                                             <>

@@ -1,15 +1,7 @@
 import type { Task } from "./task.types";
+import type { ProjectStep } from "./project.types";
 
 export type PageStatus = 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled';
-
-export interface PageStep {
-    id?: number;
-    page_id?: number;
-    step_number: number;
-    step_name: string;
-    price?: number;
-    created_at?: string;
-}
 
 export interface Page {
     id: number;
@@ -22,11 +14,11 @@ export interface Page {
     tasks?: Task[];
     tasks_count?: number;
     tasks_completed?: number;
-    steps?: PageStep[];
+    /** Project steps (read-only, inherited from parent project) */
+    steps?: ProjectStep[];
 }
 
 export interface CreatePageData {
     project_id: number;
     name: string;
-    steps?: PageStep[];
 }

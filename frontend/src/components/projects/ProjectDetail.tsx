@@ -167,6 +167,46 @@ export const ProjectDetail = () => {
                 </div>
             </div>
 
+            {/* Project Steps */}
+            {project.steps && project.steps.length > 0 && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-semibold text-gray-900">Steps & Harga</h2>
+                        {(user?.role === 'admin' || user?.role === 'manager') && (
+                            <button
+                                onClick={() => setShowEditModal(true)}
+                                className="text-sm text-blue-600 hover:text-blue-700 cursor-pointer"
+                            >
+                                Edit
+                            </button>
+                        )}
+                    </div>
+                    <div className="space-y-2">
+                        {project.steps.map((step) => (
+                            <div
+                                key={step.id}
+                                className="flex items-center justify-between gap-2 p-3 bg-gray-50 rounded-lg"
+                            >
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <span className="flex items-center justify-center w-6 h-6 flex-shrink-0 bg-blue-600 text-white text-xs font-bold rounded-full">
+                                        {step.step_number}
+                                    </span>
+                                    <span className="text-sm text-gray-700 truncate">{step.step_name}</span>
+                                </div>
+                                {(step.price ?? 0) > 0 && (
+                                    <span className="text-sm font-medium text-green-600 whitespace-nowrap">
+                                        Rp {(step.price ?? 0).toLocaleString('id-ID')}
+                                    </span>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-3">
+                        Step ini dipakai di semua page dalam project ini.
+                    </p>
+                </div>
+            )}
+
             {/* Pages Section */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200">
                 <div className="p-6 border-b border-gray-200 flex items-center justify-between">

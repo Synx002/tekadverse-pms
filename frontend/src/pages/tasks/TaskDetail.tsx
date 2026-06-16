@@ -143,8 +143,8 @@ export const TaskDetail = () => {
 
                             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
                                 <div className="flex-1">
-                                    <h1 className="text-lg font-semibold text-gray-900 mb-4">
-                                        Task Details
+                                    <h1 className="text-2xl font-bold text-gray-900 mb-4">
+                                        {task.step_name || 'Task'}
                                     </h1>
 
                                     {/* Task Attributes Grid */}

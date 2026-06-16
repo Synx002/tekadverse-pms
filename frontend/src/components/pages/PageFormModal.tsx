@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { pagesApi } from '../../api/pages.api';
-import type { Page, CreatePageData, PageStep } from '../../types/page.types';
+import type { Page } from '../../types/page.types';
 
 interface PageFormModalProps {
     projectId: number;
@@ -12,83 +12,18 @@ interface PageFormModalProps {
 }
 
 export const PageFormModal: React.FC<PageFormModalProps> = ({ projectId, page, onClose, onSuccess }) => {
-    const [formData, setFormData] = useState<CreatePageData>({
-        project_id: projectId,
-        name: page?.name || '',
-        steps: page?.steps || [],
-    });
-    const [stepCount, setStepCount] = useState<number>(page?.steps?.length || 0);
-    const [stepNames, setStepNames] = useState<string[]>(
-        page?.steps?.map(s => s.step_name) || []
-    );
-    const [stepPrices, setStepPrices] = useState<number[]>(
-        page?.steps?.map(s => s.price ?? 0) || []
-    );
+    const [name, setName] = useState(page?.name || '');
     const [loading, setLoading] = useState(false);
-
-    useEffect(() => {
-        if (page?.steps?.length) {
-            setStepCount(page.steps.length);
-            setStepNames(page.steps.map(s => s.step_name));
-            setStepPrices(page.steps.map(s => s.price ?? 0));
-        }
-    }, [page?.id]);
-
-    const handleStepCountChange = (count: number) => {
-        setStepCount(count);
-        const newStepNames = Array(count).fill('').map((_, i) => stepNames[i] || '');
-        const newStepPrices = Array(count).fill(0).map((_, i) => stepPrices[i] ?? 0);
-        setStepNames(newStepNames);
-        setStepPrices(newStepPrices);
-    };
-
-    const handleStepNameChange = (index: number, value: string) => {
-        const newStepNames = [...stepNames];
-        newStepNames[index] = value;
-        setStepNames(newStepNames);
-    };
-
-    const handleStepPriceChange = (index: number, value: string) => {
-        const num = parseInt(value.replace(/\D/g, ''), 10) || 0;
-        const newStepPrices = [...stepPrices];
-        newStepPrices[index] = num;
-        setStepPrices(newStepPrices);
-    };
-
-    const formatPrice = (val: number) => val > 0 ? val.toLocaleString('id-ID') : '';
-
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Validate step names if step count > 0
-        if (stepCount > 0) {
-            const emptySteps = stepNames.some(name => !name.trim());
-            if (emptySteps) {
-                toast.error('Please fill in all step names');
-                return;
-            }
-        }
-
         try {
             setLoading(true);
 
-            // Prepare steps data
-            const steps: PageStep[] = stepCount > 0
-                ? stepNames.map((name, index) => {
-                    const existingStep = page?.steps?.[index];
-                    return {
-                        ...(existingStep?.id != null && { id: existingStep.id }),
-                        step_number: index + 1,
-                        step_name: name.trim(),
-                        price: stepPrices[index] ?? 0
-                    };
-                })
-                : [];
-
             const dataToSubmit = {
-                ...formData,
-                steps: steps.length > 0 ? steps : undefined
+                project_id: projectId,
+                name: name.trim(),
             };
 
             if (page) {
@@ -122,64 +57,16 @@ export const PageFormModal: React.FC<PageFormModalProps> = ({ projectId, page, o
                         <input
                             type="text"
                             required
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
                             className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="e.g. Home Page Design"
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Number of Steps (Optional)
-                        </label>
-                        <input
-                            type="number"
-                            min="0"
-                            max="20"
-                            value={stepCount}
-                            onChange={(e) => handleStepCountChange(parseInt(e.target.value) || 0)}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                            placeholder="e.g. 3"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                            Steps serve as a reference/guide for task creation
-                        </p>
-                    </div>
-
-                    {stepCount > 0 && (
-                        <div className="space-y-3 pt-2">
-                            <label className="block text-sm font-medium text-gray-700">
-                                Step Names
-                            </label>
-                            {Array.from({ length: stepCount }).map((_, index) => (
-                                <div key={index} className="p-3 bg-gray-50 rounded-lg space-y-2">
-                                    <label className="block text-xs font-medium text-gray-700">
-                                        Step {index + 1}
-                                    </label>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        <input
-                                            type="text"
-                                            required
-                                            value={stepNames[index] || ''}
-                                            onChange={(e) => handleStepNameChange(index, e.target.value)}
-                                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                            placeholder={`e.g. ${index === 0 ? 'Sketch' : index === 1 ? 'Line Art' : 'Base Color'}`}
-                                        />
-                                        <div>
-                                            <input
-                                                type="text"
-                                                value={formatPrice(stepPrices[index] ?? 0)}
-                                                onChange={(e) => handleStepPriceChange(index, e.target.value)}
-                                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                                placeholder="Harga (Rp)"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                    <p className="text-xs text-gray-500">
+                        Steps & harga dikelola di level Project. Edit project untuk mengubah step pipeline.
+                    </p>
 
                     <div className="flex gap-3 pt-4">
                         <button

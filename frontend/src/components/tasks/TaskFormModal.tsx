@@ -8,13 +8,13 @@ import { tasksApi } from '../../api/tasks.api';
 import { pagesApi } from '../../api/pages.api';
 import { usersApi } from '../../api/users.api';
 import type { Task, CreateTaskData, UpdateTaskData } from '../../types/task.types';
-import type { Page, PageStep } from '../../types/page.types';
+import type { Page } from '../../types/page.types';
+import type { ProjectStep } from '../../types/project.types';
 import type { User } from '../../types/user.types';
 import { useAuthStore } from '../../store/authStore';
 import { SelectField } from '../ui/SelectedField';
 
 const taskSchemaBase = z.object({
-    title: z.string().min(3, 'Title must be at least 3 characters'),
     description: z.string().optional().or(z.literal('')),
     page_id: z.number().min(1, 'Please select a page'),
     step_id: z.number().optional(),
@@ -37,7 +37,7 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
     const [loading, setLoading] = useState(false);
     const [pages, setPages] = useState<Page[]>([]);
     const [artists, setArtists] = useState<User[]>([]);
-    const [availableSteps, setAvailableSteps] = useState<PageStep[]>([]);
+    const [availableSteps, setAvailableSteps] = useState<ProjectStep[]>([]);
     const [fetchingData, setFetchingData] = useState(true);
     const { user } = useAuthStore();
     const isArtist = user?.role === 'artist';
@@ -60,7 +60,6 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
     } = useForm<TaskFormData>({
         resolver: zodResolver(taskSchema),
         defaultValues: {
-            title: '',
             description: '',
             page_id: pageId || 0,
             step_id: 0,
@@ -78,7 +77,6 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
         loadData();
         if (task) {
             reset({
-                title: task.title,
                 description: task.description || '',
                 page_id: task.page_id,
                 step_id: task.step_id || 0,
@@ -173,17 +171,6 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                 </div>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-5">
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">Task Title</label>
-                        <input
-                            {...register('title')}
-                            disabled={isArtist}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
-                            placeholder="Sketch"
-                        />
-                        {errors.title && <p className="text-xs text-red-500">{errors.title.message}</p>}
-                    </div>
-
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-700">Description</label>
                         <textarea
