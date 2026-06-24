@@ -356,18 +356,20 @@ exports.updateTaskStatus = async (req, res) => {
         }
 
         // Notify manager
-        await db.execute(
-            `INSERT INTO notifications (user_id, title, message, type, related_id, related_type)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-            [
-                task.assigned_by,
-                'Task Status Updated',
-                `${task.artist_name} updated "${task.step_name || 'task'}" to ${status}`,
-                'task_updated',
-                id,
-                'task'
-            ]
-        );
+        if (task.assigned_by) {
+            await db.execute(
+                `INSERT INTO notifications (user_id, title, message, type, related_id, related_type)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+                [
+                    task.assigned_by,
+                    'Task Status Updated',
+                    `${task.artist_name} updated "${task.step_name || 'task'}" to ${status}`,
+                    'task_updated',
+                    id,
+                    'task'
+                ]
+            );
+        }
 
         // Send email to manager
         if (task.manager_email) {
