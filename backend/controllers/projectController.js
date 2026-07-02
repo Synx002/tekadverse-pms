@@ -101,7 +101,7 @@ exports.getProjectById = async (req, res) => {
 
         // Get project steps
         const [steps] = await db.execute(
-            `SELECT id, project_id, step_number, step_name, price 
+            `SELECT id, project_id, step_number, step_name 
              FROM project_steps 
              WHERE project_id = ? 
              ORDER BY step_number ASC`,
@@ -113,7 +113,7 @@ exports.getProjectById = async (req, res) => {
             data: {
                 ...projects[0],
                 pages,
-                steps: steps.map(s => ({ ...s, price: parseFloat(s.price) || 0 })),
+                steps,
             }
         });
     } catch (error) {
@@ -145,11 +145,10 @@ exports.createProject = async (req, res) => {
         // Insert steps if provided
         if (steps && Array.isArray(steps) && steps.length > 0) {
             for (const step of steps) {
-                const price = step.price != null ? parseFloat(step.price) : 0;
                 await connection.execute(
-                    `INSERT INTO project_steps (project_id, step_number, step_name, price)
-                     VALUES (?, ?, ?, ?)`,
-                    [projectId, step.step_number, step.step_name, price]
+                    `INSERT INTO project_steps (project_id, step_number, step_name)
+                     VALUES (?, ?, ?)`,
+                    [projectId, step.step_number, step.step_name]
                 );
             }
         }
@@ -194,20 +193,19 @@ exports.updateProject = async (req, res) => {
         // Update steps in-place — jangan DELETE project_steps (FK RESTRICT / SET NULL)
         if (steps && Array.isArray(steps)) {
             for (const step of steps) {
-                const price = step.price != null ? parseFloat(step.price) : 0;
                 const stepId = step.id != null ? parseInt(step.id, 10) : NaN;
 
                 if (!Number.isNaN(stepId) && stepId > 0) {
                     await connection.execute(
-                        `UPDATE project_steps SET step_name = ?, step_number = ?, price = ?
+                        `UPDATE project_steps SET step_name = ?, step_number = ?
                          WHERE id = ? AND project_id = ?`,
-                        [step.step_name, step.step_number, price, stepId, id]
+                        [step.step_name, step.step_number, stepId, id]
                     );
                 } else {
                     await connection.execute(
-                        `INSERT INTO project_steps (project_id, step_number, step_name, price)
-                         VALUES (?, ?, ?, ?)`,
-                        [id, step.step_number, step.step_name, price]
+                        `INSERT INTO project_steps (project_id, step_number, step_name)
+                         VALUES (?, ?, ?)`,
+                        [id, step.step_number, step.step_name]
                     );
                 }
             }

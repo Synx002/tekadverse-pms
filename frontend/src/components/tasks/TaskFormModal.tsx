@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { X, Calendar } from 'lucide-react';
+import { X, Calendar, DollarSign, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { tasksApi } from '../../api/tasks.api';
 import { pagesApi } from '../../api/pages.api';
@@ -22,6 +22,7 @@ const taskSchemaBase = z.object({
     priority: z.enum(['low', 'medium', 'high', 'urgent']),
     deadline: z.string().optional().or(z.literal('')),
     status: z.enum(['todo', 'work in progress', 'finished', 'need_update', 'under_review', 'approved', 'done', 'dropped']).optional(),
+    price: z.number().min(0, 'Price must be 0 or more').optional(),
 });
 
 type TaskFormData = z.infer<typeof taskSchemaBase>;
@@ -55,6 +56,7 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
         register,
         handleSubmit,
         watch,
+        setValue,
         formState: { errors },
         reset,
     } = useForm<TaskFormData>({
@@ -67,6 +69,7 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
             priority: 'medium',
             deadline: '',
             status: 'todo',
+            price: 0,
         },
     });
 
@@ -84,6 +87,7 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                 priority: task.priority,
                 deadline: task.deadline ? new Date(task.deadline).toISOString().split('T')[0] : '',
                 status: task.status,
+                price: task.price ?? 0,
             });
         }
     }, [task, reset]);
@@ -136,6 +140,7 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                 step_id: data.step_id && data.step_id > 0 ? data.step_id : undefined,
                 description: data.description || undefined,
                 deadline: data.deadline || undefined,
+                price: data.price !== undefined && data.price !== null ? Number(data.price) : undefined,
             };
 
             if (isEdit && task) {
@@ -264,15 +269,49 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Deadline</label>
                             <div className="relative">
-                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <input
                                     {...register('deadline')}
                                     type="date"
                                     disabled={isArtist}
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
                                 />
                             </div>
                         </div>
+
+                        {/* Price field — only visible to manager/admin */}
+                        {!isArtist && (
+                            <div className="space-y-3">
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium text-gray-700">
+                                        Task Price (IDR)
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            {...register('price', { valueAsNumber: true })}
+                                            type="number"
+                                            min="0"
+                                            step="1000"
+                                            placeholder="e.g. 150000"
+                                            disabled={isEdit && task?.status === 'done'}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                                        />
+                                    </div>
+                                    {errors.price && <p className="text-xs text-red-500">{errors.price.message}</p>}
+                                </div>
+                                {isEdit && task?.status === 'done' ? (
+                                    <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                        <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                                        <p className="text-xs text-amber-800 leading-relaxed">
+                                            Task sudah berstatus <span className="font-semibold">Done</span> dan earning untuk artist sudah otomatis dibuat. Harga tidak dapat diubah lagi untuk mencegah selisih pembayaran.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <p className="text-[10px] text-gray-400">
+                                        This is the amount artist earns when task is marked as Done.
+                                    </p>
+                                )}
+                            </div>
+                        )}
 
                         {isEdit && (
                             <div className="space-y-2">

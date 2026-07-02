@@ -2,14 +2,12 @@ const db = require('../config/database');
 const { logActivity } = require('../utils/logger');
 const { sendEmail, emailTemplates } = require('../utils/emailService');
 
-// Create artist earning when task becomes done/approved
+// Create artist earning when task becomes done
 async function createArtistEarningIfDone(taskId) {
     try {
         const [task] = await db.execute(
-            `SELECT t.assigned_to, t.step_id, t.status,
-                    COALESCE(ps.price, 0) as step_price
+            `SELECT t.assigned_to, t.status, COALESCE(t.price, 0) as task_price
              FROM tasks t
-             LEFT JOIN project_steps ps ON t.step_id = ps.id
              WHERE t.id = ?`,
             [taskId]
         );
@@ -17,7 +15,7 @@ async function createArtistEarningIfDone(taskId) {
         const t = task[0];
         // Only create earning when task status is 'done'
         if (!['done'].includes(t.status)) return;
-        const amount = parseFloat(t.step_price) || 0;
+        const amount = parseFloat(t.task_price) || 0;
         if (amount <= 0) return;
 
         await db.execute(
@@ -170,7 +168,7 @@ exports.getAllTasks = async (req, res) => {
              artist.email as assigned_to_email,
              artist.profile_picture as artist_profile,
              manager.name as assigned_by_name,
-             ps.step_number, ps.step_name, ps.price as step_price
+             ps.step_number, ps.step_name
       FROM tasks t
       LEFT JOIN pages pg ON t.page_id = pg.id
       LEFT JOIN project_steps ps ON t.step_id = ps.id
@@ -305,7 +303,7 @@ exports.getTaskById = async (req, res) => {
 // Create task
 exports.createTask = async (req, res) => {
     try {
-        const { page_id, step_id, description, assigned_to, priority, deadline } = req.body;
+        const { page_id, step_id, description, assigned_to, priority, deadline, price } = req.body;
 
         if (!page_id || !assigned_to) {
             return res.status(400).json({ success: false, message: 'Page and assigned artist are required' });
@@ -321,7 +319,7 @@ exports.createTask = async (req, res) => {
         }
 
         const [stepCheck] = await db.execute(
-            'SELECT id, project_id, step_name FROM project_steps WHERE id = ?',
+            'SELECT id, project_id, step_name, price as step_default_price FROM project_steps WHERE id = ?',
             [step_id]
         );
         if (stepCheck.length === 0) {
@@ -332,6 +330,10 @@ exports.createTask = async (req, res) => {
         }
 
         const stepName = stepCheck[0].step_name;
+        // Use custom price from request, fallback to step default price
+        const taskPrice = (price !== undefined && price !== null && price !== '')
+            ? parseFloat(price)
+            : parseFloat(stepCheck[0].step_default_price || 0);
 
         const [existingTask] = await db.execute(
             'SELECT id FROM tasks WHERE page_id = ? AND step_id = ?',
@@ -342,9 +344,9 @@ exports.createTask = async (req, res) => {
         }
 
         const [result] = await db.execute(
-            `INSERT INTO tasks (page_id, step_id, description, assigned_to, assigned_by, priority, deadline)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [page_id, step_id, description, assigned_to, req.user.id, priority || 'medium', deadline]
+            `INSERT INTO tasks (page_id, step_id, description, assigned_to, assigned_by, priority, deadline, price)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [page_id, step_id, description, assigned_to, req.user.id, priority || 'medium', deadline, taskPrice]
         );
 
         const [artist] = await db.execute('SELECT name, email FROM users WHERE id = ?', [assigned_to]);
@@ -373,7 +375,7 @@ exports.createTask = async (req, res) => {
             await sendEmail(artist[0].email, 'New Task Assigned - Tekadverse PMS', emailHtml);
         }
 
-        await logActivity(req.user.id, 'created_task', 'task', result.insertId, null, { step_name: stepName, assigned_to }, req.ip);
+        await logActivity(req.user.id, 'created_task', 'task', result.insertId, null, { step_name: stepName, assigned_to, price: taskPrice }, req.ip);
 
         res.status(201).json({
             success: true,
@@ -383,7 +385,8 @@ exports.createTask = async (req, res) => {
                 step_id,
                 step_name: stepName,
                 page_id,
-                assigned_to
+                assigned_to,
+                price: taskPrice
             }
         });
     } catch (error) {
@@ -519,7 +522,7 @@ exports.updateTaskStatus = async (req, res) => {
 exports.updateTask = async (req, res) => {
     try {
         const { id } = req.params;
-        let { step_id, description, assigned_to, priority, deadline, status } = req.body;
+        let { step_id, description, assigned_to, priority, deadline, status, price } = req.body;
 
         const [existing] = await db.execute('SELECT * FROM tasks WHERE id = ?', [id]);
         if (existing.length === 0) {
@@ -558,35 +561,44 @@ exports.updateTask = async (req, res) => {
             }
         }
 
-        // Restrict artist to only update status
+        // Resolve price: artist cannot update price
+        let taskPrice;
         if (req.user.role === 'artist') {
-            // Check if artist is trying to update a locked task
+            // Artist: force reset restricted fields to existing values
             const lockedStatuses = ['need_update', 'under_review', 'approved', 'done'];
             if (lockedStatuses.includes(task.status)) {
                 return res.status(403).json({ message: 'Artists cannot update tasks in this status' });
             }
-
-            // Force reset restricted fields to existing values
             step_id = task.step_id;
             description = task.description;
             assigned_to = task.assigned_to;
             priority = task.priority;
             deadline = task.deadline;
-        } else if (step_id === undefined) {
-            step_id = task.step_id;
+            taskPrice = task.price; // artist cannot change price
+        } else {
+            if (step_id === undefined) step_id = task.step_id;
+            // Manager/admin: use provided price or keep existing
+            // Prevent changing price if task is already done to avoid earning inconsistencies
+            if (task.status === 'done') {
+                taskPrice = task.price;
+            } else {
+                taskPrice = (price !== undefined && price !== null && price !== '')
+                    ? parseFloat(price)
+                    : task.price;
+            }
         }
 
         await db.execute(
-            `UPDATE tasks SET step_id = ?, description = ?, assigned_to = ?, 
-       priority = ?, deadline = ?, status = ? WHERE id = ?`,
-            [step_id, description, assigned_to, priority, deadline, status, id]
+            `UPDATE tasks SET step_id = ?, description = ?, assigned_to = ?,
+       priority = ?, deadline = ?, status = ?, price = ? WHERE id = ?`,
+            [step_id, description, assigned_to, priority, deadline, status, taskPrice, id]
         );
 
         if (['done'].includes(status)) {
             await createArtistEarningIfDone(id);
         }
 
-        await logActivity(req.user.id, 'updated_task', 'task', id, existing[0], { status }, req.ip);
+        await logActivity(req.user.id, 'updated_task', 'task', id, existing[0], { status, price: taskPrice }, req.ip);
 
         res.json({ message: 'Task updated successfully' });
     } catch (error) {

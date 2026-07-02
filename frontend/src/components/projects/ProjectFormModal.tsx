@@ -28,7 +28,6 @@ interface ProjectFormModalProps {
 interface StepForm {
     id?: number;
     step_name: string;
-    price: number;
 }
 
 const MAX_STEPS = 10;
@@ -63,7 +62,6 @@ export const ProjectFormModal = ({ project, clients, onClose, onSuccess }: Proje
                 setSteps(project.steps.map(s => ({
                     id: s.id != null ? Number(s.id) : undefined,
                     step_name: s.step_name,
-                    price: Number(s.price) || 0,
                 })));
             }
         }
@@ -74,24 +72,18 @@ export const ProjectFormModal = ({ project, clients, onClose, onSuccess }: Proje
             toast.error(`Maximum ${MAX_STEPS} steps allowed`);
             return;
         }
-        setSteps([...steps, { step_name: '', price: 0 }]);
+        setSteps([...steps, { step_name: '' }]);
     };
 
     const handleRemoveStep = (index: number) => {
         setSteps(steps.filter((_, i) => i !== index));
     };
 
-    const handleStepChange = (index: number, field: 'step_name' | 'price', value: string) => {
+    const handleStepChange = (index: number, value: string) => {
         const updated = [...steps];
-        if (field === 'price') {
-            updated[index].price = parseInt(value.replace(/\D/g, ''), 10) || 0;
-        } else {
-            updated[index].step_name = value;
-        }
+        updated[index].step_name = value;
         setSteps(updated);
     };
-
-    const formatPrice = (val: number) => val ? val.toLocaleString('id-ID') : '';
 
     const onSubmit = async (data: ProjectFormData) => {
         if (steps.some(s => !s.step_name.trim())) {
@@ -104,7 +96,6 @@ export const ProjectFormModal = ({ project, clients, onClose, onSuccess }: Proje
                 ...(step.id != null && { id: Number(step.id) }),
                 step_number: index + 1,
                 step_name: step.step_name.trim(),
-                price: step.price,
             }));
 
             const payload: CreateProjectData = {
@@ -217,24 +208,14 @@ export const ProjectFormModal = ({ project, clients, onClose, onSuccess }: Proje
                                         <div className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-400 flex-shrink-0">
                                             {index + 1}
                                         </div>
-                                        <div className="flex-1 grid grid-cols-2 gap-2">
+                                        <div className="flex-1">
                                             <input
                                                 type="text"
                                                 placeholder="Step Name (e.g. Sketch)"
                                                 value={step.step_name}
-                                                onChange={(e) => handleStepChange(index, 'step_name', e.target.value)}
-                                                className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                                onChange={(e) => handleStepChange(index, e.target.value)}
+                                                className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                             />
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">Rp</span>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Price"
-                                                    value={formatPrice(step.price)}
-                                                    onChange={(e) => handleStepChange(index, 'price', e.target.value)}
-                                                    className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono"
-                                                />
-                                            </div>
                                         </div>
                                         <button
                                             type="button"

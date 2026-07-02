@@ -75,9 +75,6 @@ export const PageDetail: React.FC = () => {
         return null;
     }
 
-    const totalBudget = page?.steps?.reduce((sum, s) => {
-        return sum + (Number(s.price) || 0);
-    }, 0) || 0;
     const completedTasks = tasks.filter(t => t.status === 'done' || t.status === 'approved').length;
     const progress = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
 
@@ -169,11 +166,7 @@ export const PageDetail: React.FC = () => {
                                                     </div>
                                                 )}
                                             </div>
-                                            {(task.step_price ?? 0) > 0 && (user?.role === 'admin' || user?.role === 'manager') && (
-                                                <span className="text-xs font-medium text-green-600">
-                                                    Rp {(task.step_price ?? 0).toLocaleString('id-ID')}
-                                                </span>
-                                            )}
+
                                         </div>
                                     </div>
                                 ))
@@ -213,18 +206,14 @@ export const PageDetail: React.FC = () => {
                                             </div>
                                             <span className="text-sm text-gray-700 truncate">{step.step_name}</span>
                                         </div>
-                                        {(step.price ?? 0) > 0 && (
-                                            <span className="text-sm font-medium text-green-600 whitespace-nowrap">
-                                                Rp {(step.price ?? 0).toLocaleString('id-ID')}
-                                            </span>
-                                        )}
+
                                     </div>
                                 ))}
                             </div>
                         </div>
                     ) : (
                         <div className="bg-amber-50 rounded-xl p-4 border border-amber-200 text-sm text-amber-800">
-                            Belum ada step di project ini. Tambahkan step & harga lewat Edit Project.
+                            Belum ada step di project ini. Tambahkan step lewat Edit Project.
                         </div>
                     )}
 
@@ -233,22 +222,15 @@ export const PageDetail: React.FC = () => {
                         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
                             <h2 className="text-sm font-semibold text-gray-900 mb-4 uppercase tracking-wider flex items-center gap-2">
                                 <Banknote className="w-4 h-4" />
-                                Budget & Pembayaran
+                                Progress Ringkasan
                             </h2>
                             <div className="space-y-3">
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600">Total Budget (semua step)</span>
-                                <span className="font-semibold text-gray-900">
-                                    Rp {totalBudget.toLocaleString('id-ID')}
-                                </span>
-                            </div>
                                 <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                                     <span className="text-sm text-gray-600">Yang sudah diselesaikan</span>
                                     <span className="font-semibold text-green-600">
-                                        Rp {tasks
-                                            .filter(t => ['done', 'approved'].includes(t.status) && (t.step_price ?? 0) > 0)
-                                            .reduce((sum, t) => sum + (t.step_price ?? 0), 0)
-                                            .toLocaleString('id-ID')}
+                                         {tasks
+                                            .filter(t => ['done', 'approved'].includes(t.status))
+                                            .length} Tasks
                                     </span>
                                 </div>
                             </div>

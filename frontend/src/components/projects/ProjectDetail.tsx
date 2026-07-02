@@ -193,11 +193,6 @@ export const ProjectDetail = () => {
                                     </span>
                                     <span className="text-sm text-gray-700 truncate">{step.step_name}</span>
                                 </div>
-                                {(step.price ?? 0) > 0 && (
-                                    <span className="text-sm font-medium text-green-600 whitespace-nowrap">
-                                        Rp {(step.price ?? 0).toLocaleString('id-ID')}
-                                    </span>
-                                )}
                             </div>
                         ))}
                     </div>
