@@ -149,14 +149,14 @@ export const ProjectFormModal = ({ project, clients, onClose, onSuccess }: Proje
 
                         <div>
                             <div className="relative">
-                                <SelectField 
-                                label="Status" {...register('status')} error={errors.status?.message}
+                                <SelectField
+                                    label="Status" {...register('status')} error={errors.status?.message}
                                 >
-                                <option value="planning">Planning</option>
-                                <option value="active">Active</option>
-                                <option value="on_hold">On Hold</option>
-                                <option value="completed">Completed</option>
-                                <option value="cancelled">Cancelled</option>
+                                    <option value="planning">Planning</option>
+                                    <option value="active">Active</option>
+                                    <option value="on_hold">On Hold</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="cancelled">Cancelled</option>
                                 </SelectField >
                             </div>
                         </div>
@@ -205,7 +205,7 @@ export const ProjectFormModal = ({ project, clients, onClose, onSuccess }: Proje
                             ) : (
                                 steps.map((step, index) => (
                                     <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                                        <div className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-400 flex-shrink-0">
+                                        <div className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-400 shrink-0">
                                             {index + 1}
                                         </div>
                                         <div className="flex-1">

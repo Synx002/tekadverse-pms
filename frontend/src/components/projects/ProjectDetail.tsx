@@ -188,7 +188,7 @@ export const ProjectDetail = () => {
                                 className="flex items-center justify-between gap-2 p-3 bg-gray-50 rounded-lg"
                             >
                                 <div className="flex items-center gap-2 min-w-0">
-                                    <span className="flex items-center justify-center w-6 h-6 flex-shrink-0 bg-blue-600 text-white text-xs font-bold rounded-full">
+                                    <span className="flex items-center justify-center w-6 h-6 shrink-0 bg-blue-600 text-white text-xs font-bold rounded-full">
                                         {step.step_number}
                                     </span>
                                     <span className="text-sm text-gray-700 truncate">{step.step_name}</span>
