@@ -27,6 +27,17 @@ export interface PayoutsResponse {
     total_to_pay: number;
 }
 
+export interface PendingTask {
+    earning_id: number;
+    amount: number;
+    earned_at: string;
+    task_id: number;
+    step_name: string;
+    page_name: string;
+    project_name: string;
+    client_name: string;
+}
+
 export const earningsApi = {
     getMyEarnings: async () => {
         const { data } = await api.get<ApiResponse<ArtistEarnings>>('/earnings/my-earnings');
@@ -40,4 +51,13 @@ export const earningsApi = {
         const { data } = await api.get<ApiResponse<GlobalFinanceStats>>('/earnings/global-stats');
         return data;
     },
+    getMyPendingTasks: async () => {
+        const { data } = await api.get<ApiResponse<PendingTask[]>>('/earnings/my-pending-tasks');
+        return data;
+    },
+    getArtistPendingTasks: async (artistId: number) => {
+        const { data } = await api.get<ApiResponse<PendingTask[]>>(`/earnings/artist-pending-tasks/${artistId}`);
+        return data;
+    },
 };
+

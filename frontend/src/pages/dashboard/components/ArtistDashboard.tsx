@@ -19,14 +19,14 @@ export const ArtistDashboard = ({ user, tasks, earnings, loading }: ArtistDashbo
     const completedTasks = myTasks.filter(t => ['done', 'approved'].includes(t.status));
     const urgentTasks = activeTasks.filter(t => t.priority === 'urgent');
 
-    const totalEarned = earnings?.total_earned ?? 0;
+    const totalEarned = Number(earnings?.total_earned ?? 0);
     const stats = [
         {
             title: 'Uang Terkumpul',
             value: `Rp ${totalEarned.toLocaleString('id-ID')}`,
             icon: Banknote,
             color: 'bg-emerald-500',
-            subtitle: 'Dari task yang selesai (done/approved)'
+            subtitle: 'Dari task yang selesai (done)'
         },
         {
             title: 'My Active Tasks',

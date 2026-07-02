@@ -15,7 +15,8 @@ async function createArtistEarningIfDone(taskId) {
         );
         if (task.length === 0 || !task[0].assigned_to) return;
         const t = task[0];
-        if (!['done', 'approved'].includes(t.status)) return;
+        // Only create earning when task status is 'done'
+        if (!['done'].includes(t.status)) return;
         const amount = parseFloat(t.step_price) || 0;
         if (amount <= 0) return;
 
@@ -27,6 +28,113 @@ async function createArtistEarningIfDone(taskId) {
         console.error('createArtistEarningIfDone:', e.message);
     }
 }
+
+// STEP 2: Helper untuk menarik kembali/menghapus earning yang salah akibat status 'approved'
+async function revertArtistEarningIfApproved(taskId) {
+    try {
+        // 1. Cek dulu apakah data earning-nya ada dan bagaimana statusnya
+        const [earningRows] = await db.execute(
+            `SELECT id, status, amount, artist_id FROM artist_earnings WHERE task_id = ?`,
+            [taskId]
+        );
+
+        if (earningRows.length === 0) {
+            console.log(`revertArtistEarningIfApproved: Tidak ada data earning untuk Task ID ${taskId}`);
+            return { success: true, message: 'Tidak ada earning yang perlu dihapus.' };
+        }
+
+        const earning = earningRows[0];
+
+        // 2. Jika statusnya 'pending', ini sangat aman untuk langsung dihapus
+        if (earning.status === 'pending') {
+
+            // OPTIONAL: Jika Anda punya tabel withdrawal_requests yang mencatat id earning ini, 
+            // pastikan untuk memutuskan relasinya atau menghapus request withdrawal yang masih pending terlebih dahulu.
+            // Contoh query jika ada tabel withdrawal:
+            // await db.execute(`DELETE FROM withdrawal_requests WHERE earning_id = ? AND status = 'pending'`, [earning.id]);
+
+            await db.execute(
+                `DELETE FROM artist_earnings WHERE id = ?`,
+                [earning.id]
+            );
+
+            console.log(`revertArtistEarningIfApproved: Berhasil menghapus pending earning untuk Task ID ${taskId}`);
+            return { success: true, mode: 'deleted', message: 'Earning yang berstatus pending berhasil dihapus.' };
+        }
+
+        // 3. Jika statusnya SUDAH BUKAN pending (misal: 'withdrawn' atau 'processing')
+        else {
+            console.warn(`[WARNING] revertArtistEarningIfApproved: Earning Task ID ${taskId} tidak bisa dihapus karena statusnya sudah: ${earning.status}`);
+
+            // Alih-alih menghapus, kita tandai atau biarkan agar Admin memeriksa manual keuangan artist tersebut
+            return {
+                success: false,
+                mode: 'locked',
+                message: `Earning tidak bisa dihapus karena status dana sudah '${earning.status}'. Diperlukan tindakan manual oleh Admin.`
+            };
+        }
+
+    } catch (e) {
+        console.error('Error di revertArtistEarningIfApproved:', e.message);
+        throw e; // Lemparkan error agar ditangkap oleh fungsi pembungkusnya (Controller Endpoint)
+    }
+}
+
+// STEP 3: Endpoint untuk memicu pembatalan/penghapusan earning yang salah
+exports.revertEarning = async (req, res) => {
+    try {
+        const { id } = req.params; // Mengambil Task ID dari URL parameters
+
+        // 1. Proteksi Keamanan: Pastikan hanya Admin atau Manager yang boleh mengakses
+        const allowedRoles = ['admin', 'manager'];
+        if (!allowedRoles.includes(req.user.role)) {
+            return res.status(403).json({
+                success: false,
+                message: 'Akses ditolak. Hanya Admin atau Manager yang dapat membatalkan earning.'
+            });
+        }
+
+        // 2. Cek apakah task tersebut memang ada di database
+        const [taskCheck] = await db.execute('SELECT id, status FROM tasks WHERE id = ?', [id]);
+        if (taskCheck.length === 0) {
+            return res.status(404).json({ success: false, message: 'Task tidak ditemukan.' });
+        }
+
+        // 3. Panggil fungsi helper dari Step 2
+        const result = await revertArtistEarningIfApproved(id);
+
+        // 4. Jika helper mengembalikan kegagalan (misal: karena status dana sudah di-withdraw / bukan pending)
+        if (!result.success) {
+            return res.status(400).json({
+                success: false,
+                message: result.message
+            });
+        }
+
+        // 5. Catat ke log aktivitas jika berhasil dihapus
+        if (result.mode === 'deleted') {
+            await logActivity(
+                req.user.id,
+                'reverted_artist_earning',
+                'task',
+                id,
+                null,
+                { note: 'Earning dihapus karena status task sebelumnya dirubah ke approved, bukan done' },
+                req.ip
+            );
+        }
+
+        // 6. Kirim respon sukses ke client
+        return res.json({
+            success: true,
+            message: result.message
+        });
+
+    } catch (error) {
+        console.error('Error di exports.revertEarning:', error);
+        return res.status(500).json({ success: false, message: 'Server error saat memproses pembatalan earning.' });
+    }
+};
 
 // Get all tasks (with filters)
 exports.getAllTasks = async (req, res) => {
@@ -288,7 +396,7 @@ exports.createTask = async (req, res) => {
 exports.updateTaskStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        const { status } = req.body;
+        let { status } = req.body;
 
         const validStatuses = ['todo', 'work in progress', 'finished', 'need_update', 'under_review', 'approved', 'done', 'dropped'];
         if (!validStatuses.includes(status)) {
@@ -327,11 +435,27 @@ exports.updateTaskStatus = async (req, res) => {
         const task = existing[0];
 
         // Check if artist is trying to update a locked task
+        // Membatasi artist untuk memperbarui status dengan aman
         if (req.user.role === 'artist') {
+            // 1. Cek status yang dikunci (locked)
             const lockedStatuses = ['need_update', 'under_review', 'approved', 'done'];
             if (lockedStatuses.includes(task.status)) {
                 return res.status(403).json({ message: 'Artists cannot update tasks in this status' });
             }
+
+            // 2. Validasi status yang masuk jika mereka mencoba mengubahnya
+            if (status && status !== task.status) {
+                const allowedForArtist = ['todo', 'work in progress', 'finished'];
+                if (!allowedForArtist.includes(status)) {
+                    return res.status(403).json({ message: 'Artists can only move tasks to Todo, Working, or Finished' });
+                }
+            }
+
+            // 3. Cegah overwrite NULL: gunakan status yang ada di database jika payload kosong
+            status = status || task.status;
+        } else {
+            // Default untuk Manager/Admin jika field tidak dikirim di payload
+            if (status === undefined) status = task.status;
         }
 
         // Update started_at when status changes to 'working'
@@ -351,7 +475,7 @@ exports.updateTaskStatus = async (req, res) => {
             [status, started_at, completed_at, id]
         );
 
-        if (['done', 'approved'].includes(status)) {
+        if (['done'].includes(status)) {
             await createArtistEarningIfDone(id);
         }
 
@@ -458,7 +582,7 @@ exports.updateTask = async (req, res) => {
             [step_id, description, assigned_to, priority, deadline, status, id]
         );
 
-        if (['done', 'approved'].includes(status)) {
+        if (['done'].includes(status)) {
             await createArtistEarningIfDone(id);
         }
 

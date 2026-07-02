@@ -11,5 +11,7 @@ router.post('/', auth, authorize('manager', 'admin'), taskController.createTask)
 router.put('/:id/status', auth, authorize('artist', 'manager', 'admin'), taskController.updateTaskStatus);
 router.put('/:id', auth, authorize('manager', 'admin', 'artist'), taskController.updateTask);
 router.delete('/:id', auth, authorize('admin', 'manager'), taskController.deleteTask);
+router.put('/:id/revert-earning', auth, authorize('admin', 'manager'), taskController.revertEarning);
+
 
 module.exports = router;

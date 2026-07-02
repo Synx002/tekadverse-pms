@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
-import { earningsApi, type PayoutItem, type GlobalFinanceStats } from '../../api/earnings.api';
+import { earningsApi, type PayoutItem, type GlobalFinanceStats, type PendingTask } from '../../api/earnings.api';
 import { withdrawalsApi, type Withdrawal } from '../../api/withdrawals.api';
 import { toast } from 'sonner';
-import { Banknote, TrendingUp, Wallet, History, ArrowUpRight, Clock, CheckCircle2, XCircle, AlertCircle, Building2, Users, ArrowDownRight } from 'lucide-react';
+import {
+    Banknote, TrendingUp, Wallet, History, ArrowUpRight, Clock,
+    CheckCircle2, XCircle, AlertCircle, Building2, Users, ArrowDownRight,
+    ChevronDown, ChevronUp, FileText, Loader2, FolderOpen
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { Skeleton, FinanceCardSkeleton } from '../../components/ui/Skeleton';
 
@@ -16,6 +20,14 @@ export const Finance = () => {
     const [loading, setLoading] = useState(true);
     const [requesting, setRequesting] = useState(false);
     const [withdrawAmount, setWithdrawAmount] = useState('');
+
+    // Pending task breakdown states
+    const [showPendingTasks, setShowPendingTasks] = useState(false);
+    const [myPendingTasks, setMyPendingTasks] = useState<PendingTask[]>([]);
+    const [pendingTasksLoading, setPendingTasksLoading] = useState(false);
+    const [expandedArtist, setExpandedArtist] = useState<number | null>(null);
+    const [artistPendingTasks, setArtistPendingTasks] = useState<Record<number, PendingTask[]>>({});
+    const [artistTasksLoading, setArtistTasksLoading] = useState<Record<number, boolean>>({});
 
     const isArtist = user?.role === 'artist';
 
@@ -47,6 +59,40 @@ export const Finance = () => {
             toast.error('Failed to load financial data');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleTogglePendingTasks = async () => {
+        if (!showPendingTasks && myPendingTasks.length === 0) {
+            try {
+                setPendingTasksLoading(true);
+                const res = await earningsApi.getMyPendingTasks();
+                setMyPendingTasks(res.data || []);
+            } catch {
+                toast.error('Failed to load pending task details');
+            } finally {
+                setPendingTasksLoading(false);
+            }
+        }
+        setShowPendingTasks(prev => !prev);
+    };
+
+    const handleToggleArtistTasks = async (artistId: number) => {
+        if (expandedArtist === artistId) {
+            setExpandedArtist(null);
+            return;
+        }
+        setExpandedArtist(artistId);
+        if (!artistPendingTasks[artistId]) {
+            try {
+                setArtistTasksLoading(prev => ({ ...prev, [artistId]: true }));
+                const res = await earningsApi.getArtistPendingTasks(artistId);
+                setArtistPendingTasks(prev => ({ ...prev, [artistId]: res.data || [] }));
+            } catch {
+                toast.error('Failed to load artist task details');
+            } finally {
+                setArtistTasksLoading(prev => ({ ...prev, [artistId]: false }));
+            }
         }
     };
 
@@ -146,11 +192,79 @@ export const Finance = () => {
         );
     }
 
+    /*  Reusable Pending Tasks Panel                          */
+    const PendingTasksPanel = ({ tasks, loading: tasksLoading }: { tasks: PendingTask[]; loading: boolean }) => (
+        <div className="mt-0  rounded-2xl overflow-hidden bg-white">
+            <div className="px-5 py-3 flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-700 tracking-wider uppercase">Task Breakdown Pending Balance</span>
+            </div>
+            {tasksLoading ? (
+                <div className="flex items-center justify-center py-10 gap-2 text-gray-400">
+                    <Loader2 size={18} className="animate-spin" />
+                    <span className="text-sm">Loading tasks</span>
+                </div>
+            ) : tasks.length === 0 ? (
+                <div className="py-10 text-center text-gray-400 italic text-sm">No pending tasks found</div>
+            ) : (
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-y border-gray-200">
+                                <th className="px-5 py-3 text-left text-[10px] font-black text-gray-700 tracking-widest uppercase">Step / Task</th>
+                                <th className="px-5 py-3 text-left text-[10px] font-black text-gray-700 tracking-widest uppercase">Project</th>
+                                <th className="px-5 py-3 text-left text-[10px] font-black text-gray-700 tracking-widest uppercase">Page</th>
+                                <th className="px-5 py-3 text-left text-[10px] font-black text-gray-700 tracking-widest uppercase">Earned At</th>
+                                <th className="px-5 py-3 text-right text-[10px] font-black text-gray-700 tracking-widest uppercase">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {tasks.map((task) => (
+                                <tr key={task.earning_id} className="hover:bg-gray-100/30 transition-colors">
+                                    <td className="px-5 py-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-medium text-gray-800">{task.step_name}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-5 py-3">
+                                        <div className="flex items-center gap-1.5 text-gray-600">
+                                            <FolderOpen size={13} className="text-gray-400" />
+                                            <span>{task.project_name}</span>
+                                        </div>
+                                        {task.client_name && (
+                                            <div className="text-[10px] text-gray-400 mt-0.5 ml-5">{task.client_name}</div>
+                                        )}
+                                    </td>
+                                    <td className="px-5 py-3 text-gray-600 text-xs">{task.page_name}</td>
+                                    <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">
+                                        {format(new Date(task.earned_at), 'dd MMM yyyy')}
+                                    </td>
+                                    <td className="px-5 py-3 text-right">
+                                        <span className="font-bold text-orange-600">{formatShortIDR(task.amount)}</span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                        <tfoot>
+                            <tr className="border-t-2 border-gray-200 bg-gray-100/50">
+                                <td colSpan={4} className="px-5 py-3 text-[10px] font-black text-gray-700 tracking-widest uppercase text-left">Total</td>
+                                <td className="px-5 py-3 text-right font-black text-orange-700">
+                                    {formatShortIDR(tasks.reduce((s, t) => s + Number(t.amount), 0))}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            )}
+        </div>
+    );
+
+    /*  Artist View                                           */
     const renderArtistView = () => (
         <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-6 rounded-2xl text-white shadow-lg relative overflow-hidden">
-                    <Banknote className="absolute top-1/2 right-4 -translate-y-1/2 w-24 h-24 text-white/10 -rotate-12" />
+                {/* Total Earned */}
+                <div className="bg-linear-to-br from-blue-600 to-blue-700 p-6 rounded-2xl text-white shadow-lg relative overflow-hidden">
+                    <Banknote className="absolute top-1/2 right-4 -translate-y-1/2 w-16 h-16 text-white/10 -rotate-12" />
                     <p className="text-blue-100 text-sm font-medium tracking-wider">Total Earned</p>
                     <h2 className="text-3xl font-bold mt-1">{formatShortIDR(earnings?.total_earned)}</h2>
                     <div className="mt-4 flex items-center gap-2 text-blue-100 text-xs">
@@ -158,21 +272,66 @@ export const Finance = () => {
                     </div>
                 </div>
 
+                {/* Available Balance */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden">
-                    <Wallet className="absolute top-1/2 right-4 -translate-y-1/2 w-24 h-24 text-gray-50 -rotate-12" />
+                    <Wallet className="absolute top-1/2 right-4 -translate-y-1/2 w-16 h-16 text-gray-50 -rotate-12" />
                     <p className="text-gray-500 text-sm font-medium tracking-wider">Available Balance</p>
-                    <h2 className="text-3xl font-bold mt-1 text-gray-900 ">{formatShortIDR(earnings?.total_pending)}</h2>
+                    <h2 className="text-3xl font-bold mt-1 text-gray-900">{formatShortIDR(earnings?.total_pending)}</h2>
                     <div className="mt-4 flex items-center gap-2 text-orange-600 text-xs font-medium">
                         <Clock size={14} /> Ready to withdraw
                     </div>
                 </div>
 
+                {/* Paid to Bank */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden">
-                    <CheckCircle2 className="absolute top-1/2 right-4 -translate-y-1/2 w-24 h-24 text-gray-50 -rotate-12" />
+                    <CheckCircle2 className="absolute top-1/2 right-4 -translate-y-1/2 w-16 h-16 text-gray-50 -rotate-12" />
                     <p className="text-gray-500 text-sm font-medium tracking-wider">Paid to Bank</p>
                     <h2 className="text-3xl font-bold mt-1 text-gray-900 ">{formatShortIDR(earnings?.total_paid)}</h2>
                     <div className="mt-4 flex items-center gap-2 text-emerald-600 text-xs font-medium">
                         <History size={14} /> Successfully transferred
+                    </div>
+                </div>
+            </div>
+
+            {/* Pending Task Breakdown - standalone section */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                {/* Header / Toggle Button */}
+                <button
+                    onClick={handleTogglePendingTasks}
+                    className="w-full flex items-center justify-between px-6 py-5 hover:bg-gray-50/80 transition-colors"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-gray-100 text-gray-500 transition-colors duration-300">
+                            <FileText size={18} />
+                        </div>
+                        <div className="text-left">
+                            <h3 className="text-gray-900 font-bold">Pending Task Breakdown</h3>
+                            <p className="text-xs text-gray-500">See the tasks that make up your available balance</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 text-[10px] font-bold tracking-wider text-gray-400">
+                        <ChevronDown
+                            size={16}
+                            className={`transition-transform duration-300 ease-in-out ${showPendingTasks ? 'rotate-180' : 'rotate-0'
+                                }`}
+                        />
+                        {showPendingTasks ? 'HIDE' : 'SHOW'}
+                    </div>
+                </button>
+
+                {/* Animated expand/collapse wrapper */}
+                <div
+                    className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${showPendingTasks ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                        }`}
+                >
+                    <div className="overflow-hidden">
+                        <div
+                            className={`transition-opacity duration-300 ${showPendingTasks ? 'opacity-100 delay-100' : 'opacity-0'
+                                }`}
+                        >
+                            <PendingTasksPanel tasks={myPendingTasks} loading={pendingTasksLoading} />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -204,7 +363,7 @@ export const Finance = () => {
 
                             {!user?.bank_account_number ? (
                                 <div className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 text-sm text-red-700">
-                                    <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
+                                    <AlertCircle size={18} className="shrink-0 mt-0.5" />
                                     <span>Please complete your bank account details in your Profile first.</span>
                                 </div>
                             ) : (
@@ -244,7 +403,7 @@ export const Finance = () => {
                                 'Balance will be returned if transfer fails.'
                             ].map((text, i) => (
                                 <li key={i} className="flex gap-2 text-xs text-emerald-700 leading-relaxed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
                                     {text}
                                 </li>
                             ))}
@@ -308,6 +467,7 @@ export const Finance = () => {
         </div>
     );
 
+    /*  Manager / Admin View                                  */
     const renderManagerView = () => (
         <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -344,8 +504,9 @@ export const Finance = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Withdrawal Requests */}
+                <div className="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                     <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-red-50/50">
                         <h3 className=" text-red-900 flex items-center gap-2">
                             <ArrowDownRight className="text-red-600" /> Withdrawal Requests
@@ -399,13 +560,14 @@ export const Finance = () => {
                     </div>
                 </div>
 
-                <div className="space-y-8">
+                <div className="lg:col-span-2 space-y-8">
+                    {/* Artist Balances expandable rows */}
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                         <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
                             <h3 className=" text-gray-800 flex items-center gap-2">
                                 <Users className="text-gray-400" /> Artist Balances
                             </h3>
-                            <span className="text-[10px]  text-gray-400 tracking-widest">Sorted by highest</span>
+                            <span className="text-[10px]  text-gray-400 tracking-widest">Click artist to see tasks</span>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full">
@@ -415,17 +577,46 @@ export const Finance = () => {
                                         <th className="px-6 py-3 text-right text-[10px]  text-gray-500 uppercase">Pending Balance</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-50">
+                                <tbody>
                                     {payouts.map((p) => (
-                                        <tr key={p.artist_id} className="hover:bg-gray-50/50 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <div className=" text-gray-800 text-sm">{p.artist_name}</div>
-                                                <div className="text-[10px] text-gray-500  italic">{p.artist_email}</div>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <span className=" text-orange-600">{formatShortIDR(p.total_pending)}</span>
-                                            </td>
-                                        </tr>
+                                        <>
+                                            {/* Artist row clickable */}
+                                            <tr
+                                                key={p.artist_id}
+                                                onClick={() => handleToggleArtistTasks(p.artist_id)}
+                                                className="hover:bg-gray-50/80 cursor-pointer transition-colors border-t border-gray-50"
+                                            >
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`p-1.5 rounded-lg transition-colors ${expandedArtist === p.artist_id ? 'bg-gray-100 text-gray-400' : 'bg-gray-100 text-gray-400'}`}>
+                                                            {expandedArtist === p.artist_id
+                                                                ? <ChevronUp size={14} />
+                                                                : <ChevronDown size={14} />
+                                                            }
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-medium text-gray-800 text-sm">{p.artist_name}</div>
+                                                            <div className="text-[10px] text-gray-400 italic">{p.artist_email}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <span className="font-bold text-orange-600">{formatShortIDR(p.total_pending)}</span>
+                                                </td>
+                                            </tr>
+
+                                            {/* Expanded task breakdown */}
+                                            {expandedArtist === p.artist_id && (
+                                                <tr key={`tasks-${p.artist_id}`}>
+                                                    <td colSpan={2} className="px-4 pb-4 ">
+                                                        <PendingTasksPanel
+                                                            tasks={artistPendingTasks[p.artist_id] || []}
+                                                            loading={artistTasksLoading[p.artist_id] || false}
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </>
                                     ))}
                                     {payouts.length === 0 && (
                                         <tr><td colSpan={2} className="p-8 text-center text-gray-400 italic">All artists have been paid in full</td></tr>
@@ -440,6 +631,7 @@ export const Finance = () => {
                         </div>
                     </div>
 
+                    {/* Recent History */}
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                             <h3 className="font-bold text-gray-800 flex items-center gap-2">
@@ -459,7 +651,7 @@ export const Finance = () => {
                                                     </div>
                                                     <div>
                                                         <p className="text-xs font-bold text-gray-800">{formatShortIDR(parseFloat(w.amount.toString()))}</p>
-                                                        <p className="text-[10px] text-gray-400 capitalize">{w.artist_name} • {w.status}</p>
+                                                        <p className="text-[10px] text-gray-400 capitalize">{w.artist_name} {w.status}</p>
                                                     </div>
                                                 </div>
                                             </td>
