@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { CheckSquare, Clock, Calendar, Banknote, Wallet } from 'lucide-react';
+import { CheckSquare, Clock, AlertCircle, Calendar, Banknote } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Task } from '../../../types/task.types';
 import type { User } from '../../../types/user.types';
@@ -16,46 +16,45 @@ export const ArtistDashboard = ({ user, tasks, earnings, loading }: ArtistDashbo
 
     const myTasks = tasks.filter(t => t.assigned_to === user?.id);
     const activeTasks = myTasks.filter(t => !['done', 'approved', 'dropped'].includes(t.status));
+    const completedTasks = myTasks.filter(t => ['done', 'approved'].includes(t.status));
+    const urgentTasks = activeTasks.filter(t => t.priority === 'urgent');
 
-    const formatCurrency = (amount: number | string | undefined) => {
-        return `Rp ${Number(amount || 0).toLocaleString('id-ID')}`;
-    };
-
+    const totalEarned = Number(earnings?.total_earned ?? 0);
     const stats = [
         {
-            title: 'Penghasilan Total',
-            value: formatCurrency(earnings?.total_earned),
+            title: 'Uang Terkumpul',
+            value: `Rp ${totalEarned.toLocaleString('id-ID')}`,
             icon: Banknote,
-            color: 'bg-blue-600',
-            subtitle: 'Lifetime gross earnings'
-        },
-        {
-            title: 'Saldo Tersedia',
-            value: formatCurrency(earnings?.total_pending),
-            icon: Wallet,
-            color: 'bg-orange-500',
-            subtitle: 'Ready to withdraw'
-        },
-        {
-            title: 'Telah Dibayar',
-            value: formatCurrency(earnings?.total_paid),
-            icon: CheckSquare,
             color: 'bg-emerald-500',
-            subtitle: 'Transferred to bank'
+            subtitle: 'Dari task yang selesai (done)'
         },
         {
-            title: 'Active Tasks',
+            title: 'My Active Tasks',
             value: activeTasks.length,
             icon: Clock,
-            color: 'bg-indigo-500',
-            subtitle: 'Currently in progress'
+            color: 'bg-blue-500',
+            subtitle: 'Currently working on'
+        },
+        {
+            title: 'Completed',
+            value: completedTasks.length,
+            icon: CheckSquare,
+            color: 'bg-green-500',
+            subtitle: 'Lifetime total'
+        },
+        {
+            title: 'Urgent',
+            value: urgentTasks.length,
+            icon: AlertCircle,
+            color: 'bg-red-500',
+            subtitle: 'Needs immediate focus'
         }
     ];
 
     const getStatusColor = (status: string) => {
         const colors: Record<string, string> = {
             todo: 'bg-gray-100 text-gray-800',
-            'work in progress': 'bg-blue-100 text-blue-800',
+            working: 'bg-blue-100 text-blue-800',
             finished: 'bg-indigo-100 text-indigo-800',
             need_update: 'bg-yellow-100 text-yellow-800',
             under_review: 'bg-purple-100 text-purple-800',
@@ -107,7 +106,7 @@ export const ArtistDashboard = ({ user, tasks, earnings, loading }: ArtistDashbo
                             <div className="flex justify-between items-start">
                                 <div>
                                     <p className="text-xs font-medium text-blue-600 mb-1">{task.project_name}</p>
-                                    <h3 className="font-medium text-gray-900">{task.step_name || task.description}</h3>
+                                    <h3 className="font-medium text-gray-900">{task.step_name || '—'}</h3>
                                     <div className="flex gap-2 mt-2">
                                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getStatusColor(task.status)}`}>
                                             {task.status.replace('_', ' ').toUpperCase()}

@@ -79,7 +79,7 @@ export const TaskList = ({ tasks }: TaskListProps) => {
                                 <td className="px-6 py-4">
                                     <div className="flex flex-col">
                                         <p className="text-sm font-medium text-gray-900">
-                                            {task.step_name || 'Untitled Task'}
+                                            {task.step_name || '—'}
                                         </p>
                                         {task.description && (
                                             <p className="text-xs text-gray-500 line-clamp-1">

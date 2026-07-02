@@ -34,15 +34,17 @@ export interface Task {
     step_number?: number;
     step_name?: string;
     step_price?: number;
+    price?: number;
 }
 
 export interface CreateTaskData {
     page_id: number;
-    step_id: number;  // Required: each task must be assigned to a step
+    step_id: number;
     description?: string;
     assigned_to: number;
     priority?: TaskPriority;
     deadline?: string;
+    price?: number;
 }
 
 export interface UpdateTaskData {
@@ -52,4 +54,5 @@ export interface UpdateTaskData {
     status?: TaskStatus;
     priority?: TaskPriority;
     deadline?: string;
+    price?: number;
 }

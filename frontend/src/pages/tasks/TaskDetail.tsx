@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { BASE_URL } from '../../api/axios';
 import { TaskFormModal } from '../../components/tasks/TaskFormModal';
 import { useAuthStore } from '../../store/authStore';
+import { DeleteTaskModal } from '../../components/tasks/DeleteTaskModal';
 
 export const TaskDetail = () => {
     const { id } = useParams<{ id: string }>();
@@ -21,6 +22,7 @@ export const TaskDetail = () => {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
     useEffect(() => {
         if (id) {
@@ -46,17 +48,17 @@ export const TaskDetail = () => {
         }
     };
 
-    const handleDelete = async () => {
-        if (!task || !window.confirm('Are you sure you want to delete this task?')) return;
+    // const handleDelete = async () => {
+    //     if (!task || !window.confirm('Are you sure you want to delete this task?')) return;
 
-        try {
-            await tasksApi.delete(task.id);
-            toast.success('Task deleted successfully');
-            navigate('/tasks');
-        } catch (error) {
-            toast.error('Failed to delete task');
-        }
-    };
+    //     try {
+    //         await tasksApi.delete(task.id);
+    //         toast.success('Task deleted successfully');
+    //         navigate('/tasks');
+    //     } catch (error) {
+    //         toast.error('Failed to delete task');
+    //     }
+    // };
 
     const handleSubmitComment = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -126,110 +128,114 @@ export const TaskDetail = () => {
                 {/* Main Content */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Task Header */}
-                    <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-                        {/* Top Banner */}
-                        <div className="h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
-
+                    <div className="bg-white rounded-xl border border-gray-200">
                         <div className="p-6">
                             {/* Project Name Badge */}
-                            <div className="mb-4">
-                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700 border border-blue-200">
-                                    <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                            <div className="flex items-center justify-between mb-5">
+                                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full"></span>
                                     {task.project?.name || task.project_name}
                                 </span>
-                            </div>
-
-                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
-                                <div className="flex-1">
-                                    <h1 className="text-lg font-semibold text-gray-900 mb-4">
-                                        Task Details
-                                    </h1>
-
-                                    {/* Task Attributes Grid */}
-                                    <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-                                        {/* Status */}
-                                        <div>
-                                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">Status</p>
-                                            <span className={`inline-block px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm ${getStatusColor(task.status)}`}>
-                                                {task.status.replace('_', ' ').toUpperCase()}
-                                            </span>
-                                        </div>
-
-                                        {/* Priority */}
-                                        <div>
-                                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">Priority</p>
-                                            <span className={`inline-block px-3 py-1.5 rounded-lg text-xs font-bold bg-white shadow-sm  ${getPriorityColor(task.priority).replace('text-', 'border-')}`}>
-                                                <span className={getPriorityColor(task.priority)}>
-                                                    {task.priority.toUpperCase()}
-                                                </span>
-                                            </span>
-                                        </div>
-
-                                        {/* Page Name */}
-                                        {task.page_name && (
-                                            <div>
-                                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">Page</p>
-                                                <p className="text-sm font-medium text-gray-900">{task.page_name}</p>
-                                            </div>
-                                        )}
-
-                                        {/* Step Name */}
-                                        {task.step_name && (
-                                            <div>
-                                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">Step</p>
-                                                <p className="text-sm font-medium text-gray-900">{task.step_name}</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
 
                                 {/* Action Buttons */}
                                 <div className="flex gap-2">
-                                    {user?.role !== 'artist' && (
-                                        <button
-                                            onClick={() => setIsEditModalOpen(true)}
-                                            className="group relative px-4 py-2 bg-white border-2 border-blue-500 text-blue-600 rounded-lg hover:bg-blue-500 hover:text-white transition-all duration-200 shadow-sm hover:shadow-md flex items-center gap-2"
-                                        >
-                                            <Edit className="w-4 h-4" />
-                                            <span className="font-medium">Edit</span>
-                                        </button>
-                                    )}
+                                    <button
+                                        onClick={() => setIsEditModalOpen(true)}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                                    >
+                                        <Edit className="w-3.5 h-3.5" />
+                                        Edit
+                                    </button>
 
                                     {user?.role !== 'artist' && (
                                         <button
-                                            onClick={handleDelete}
-                                            className="group relative px-4 py-2 bg-white border-2 border-red-500 text-red-600 rounded-lg hover:bg-red-500 hover:text-white transition-all duration-200 shadow-sm hover:shadow-md flex items-center gap-2"
+                                            onClick={() => setIsDeleteModalOpen(true)}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 border border-gray-300 rounded-lg hover:bg-red-50 hover:border-red-200 transition-colors"
                                         >
-                                            <Trash2 className="w-4 h-4" />
-                                            <span className="font-medium">Delete</span>
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                            Delete
                                         </button>
                                     )}
                                 </div>
+                            </div>
+
+                            <h1 className="text-xl font-semibold text-gray-900 mb-6">
+                                {task.step_name || 'Task'}
+                            </h1>
+
+                            {/* Task Attributes Grid */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-5 pb-6 border-b border-gray-100">
+                                {/* Status */}
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1.5">Status</p>
+                                    <span className={`inline-block px-2.5 py-1 rounded-md text-xs font-medium ${getStatusColor(task.status)}`}>
+                                        {task.status.replace('_', ' ')}
+                                    </span>
+                                </div>
+
+                                {/* Priority */}
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1.5">Priority</p>
+                                    <span className={`text-sm font-medium ${getPriorityColor(task.priority)}`}>
+                                        {task.priority}
+                                    </span>
+                                </div>
+
+                                {/* Price */}
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1.5">Price</p>
+                                    <p className="text-sm font-semibold text-gray-900">
+                                        {task.price != null
+                                            ? new Intl.NumberFormat('id-ID', {
+                                                style: 'currency',
+                                                currency: 'IDR',
+                                                minimumFractionDigits: 0,
+                                            }).format(task.price)
+                                            : '—'}
+                                    </p>
+                                </div>
+
+                                {/* Page Name */}
+                                {task.page_name && (
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-1.5">Page</p>
+                                        <p className="text-sm font-medium text-gray-900">{task.page_name}</p>
+                                    </div>
+                                )}
+
+                                {/* Step Name */}
+                                {task.step_name && (
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-1.5">Step</p>
+                                        <p className="text-sm font-medium text-gray-900">{task.step_name}</p>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Description */}
                             {task.description && (
-                                <div className="mt-6 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                                    <p className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wider">Description</p>
-                                    <div className="prose max-w-none">
-                                        <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{task.description}</p>
-                                    </div>
+                                <div className="pt-5">
+                                    <p className="text-xs text-gray-500 mb-2">Description</p>
+                                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                                        {task.description}
+                                    </p>
                                 </div>
                             )}
                         </div>
                     </div>
 
                     {/* Comments */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                            <MessageSquare className="w-5 h-5" />
-                            Comments ({comments.length})
+                    <div className="bg-white rounded-xl border border-gray-200 p-6">
+                        <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                            <MessageSquare className="w-4 h-4 text-gray-400" />
+                            Comments
+                            <span className="text-gray-400 font-normal">({comments.length})</span>
                         </h2>
 
-                        <div className="space-y-4 mb-6">
+                        <div className="space-y-4 mb-5">
                             {comments.map((comment) => (
                                 <div key={comment.id} className="flex gap-3">
-                                    <div className="w-8 h-8 rounded-full overflow-hidden bg-blue-500 text-white flex items-center justify-center font-medium flex-shrink-0">
+                                    <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 text-gray-600 flex items-center justify-center text-sm font-medium flex-shrink-0">
                                         {comment.profile_picture ? (
                                             <img src={`${BASE_URL}/${comment.profile_picture}`} alt={comment.user_name} className="w-full h-full object-cover" />
                                         ) : (
@@ -237,13 +243,13 @@ export const TaskDetail = () => {
                                         )}
                                     </div>
                                     <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="font-medium text-gray-900">{comment.user_name}</span>
-                                            <span className="text-xs text-gray-500">
+                                        <div className="flex items-center gap-2 mb-0.5">
+                                            <span className="text-sm font-medium text-gray-900">{comment.user_name}</span>
+                                            <span className="text-xs text-gray-400">
                                                 {format(new Date(comment.created_at), 'MMM dd, yyyy HH:mm')}
                                             </span>
                                         </div>
-                                        <p className="text-gray-700">{comment.comment}</p>
+                                        <p className="text-sm text-gray-600">{comment.comment}</p>
                                     </div>
                                 </div>
                             ))}
@@ -255,14 +261,14 @@ export const TaskDetail = () => {
                                 value={newComment}
                                 onChange={(e) => setNewComment(e.target.value)}
                                 placeholder="Add a comment..."
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                className="flex-1 px-3.5 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
                             />
                             <button
                                 type="submit"
                                 disabled={submitting || !newComment.trim()}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 cursor-pointer"
+                                className="px-3.5 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                             >
-                                <Send className="w-5 h-5" />
+                                <Send className="w-4 h-4" />
                             </button>
                         </form>
                     </div>
@@ -309,6 +315,18 @@ export const TaskDetail = () => {
                         onSuccess={() => {
                             setIsEditModalOpen(false);
                             loadTaskDetail();
+                        }}
+                    />
+                )
+            }
+            {
+                isDeleteModalOpen && (
+                    <DeleteTaskModal
+                        task={task}
+                        onClose={() => setIsDeleteModalOpen(false)}
+                        onSuccess={() => {
+                            setIsDeleteModalOpen(false);
+                            navigate('/tasks');
                         }}
                     />
                 )

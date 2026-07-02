@@ -7,6 +7,14 @@ export interface ArtistEarnings {
     total_pending: number;
 }
 
+export interface GlobalFinanceStats {
+    total_earned: number;
+    total_paid: number;
+    total_pending: number;
+    pending_requests: number;
+    pending_requests_amount: number;
+}
+
 export interface PayoutItem {
     artist_id: number;
     artist_name: string;
@@ -19,12 +27,15 @@ export interface PayoutsResponse {
     total_to_pay: number;
 }
 
-export interface GlobalFinanceStats {
-    total_earned: number;
-    total_paid: number;
-    total_pending: number;
-    pending_requests: number;
-    pending_requests_amount: number;
+export interface PendingTask {
+    earning_id: number;
+    amount: number;
+    earned_at: string;
+    task_id: number;
+    step_name: string;
+    page_name: string;
+    project_name: string;
+    client_name: string;
 }
 
 export const earningsApi = {
@@ -40,4 +51,13 @@ export const earningsApi = {
         const { data } = await api.get<ApiResponse<GlobalFinanceStats>>('/earnings/global-stats');
         return data;
     },
+    getMyPendingTasks: async () => {
+        const { data } = await api.get<ApiResponse<PendingTask[]>>('/earnings/my-pending-tasks');
+        return data;
+    },
+    getArtistPendingTasks: async (artistId: number) => {
+        const { data } = await api.get<ApiResponse<PendingTask[]>>(`/earnings/artist-pending-tasks/${artistId}`);
+        return data;
+    },
 };
+

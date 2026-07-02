@@ -44,21 +44,20 @@ exports.getAllPages = async (req, res) => {
     }
 };
 
-// Get available steps for a page (steps from project not yet assigned for this specific page)
+// Get available project steps for a page (not yet assigned on this page)
 exports.getAvailableSteps = async (req, res) => {
     try {
-        const { id } = req.params; // Page ID
+        const { id } = req.params;
         const excludeTaskId = req.query.exclude_task_id ? parseInt(req.query.exclude_task_id) : null;
 
-        // Get project_id from page
-        const [page] = await db.execute('SELECT project_id FROM pages WHERE id = ?', [id]);
-        if (page.length === 0) {
+        const [pages] = await db.execute('SELECT project_id FROM pages WHERE id = ?', [id]);
+        if (pages.length === 0) {
             return res.status(404).json({ success: false, message: 'Page not found' });
         }
-        const projectId = page[0].project_id;
 
-        // Get all steps from project
-        const [projectSteps] = await db.execute(
+        const projectId = pages[0].project_id;
+
+        const [allSteps] = await db.execute(
             `SELECT id, project_id, step_number, step_name, price
              FROM project_steps
              WHERE project_id = ?
@@ -66,18 +65,19 @@ exports.getAvailableSteps = async (req, res) => {
             [projectId]
         );
 
-        // Get steps already used for tasks on this SPECIFIC page
-        const [usedTasks] = await db.execute(
+        const [usedSteps] = await db.execute(
             `SELECT step_id, id as task_id FROM tasks WHERE page_id = ? AND step_id IS NOT NULL`,
             [id]
         );
 
         const usedByOtherTask = (stepId) => {
-            const used = usedTasks.find(r => r.step_id === stepId);
+            const used = usedSteps.find(r => r.step_id === stepId);
             return used && (!excludeTaskId || used.task_id !== excludeTaskId);
         };
 
-        const result = projectSteps.filter(s => !usedByOtherTask(s.id));
+        const result = allSteps
+            .filter(s => !usedByOtherTask(s.id))
+            .map(s => ({ ...s, price: parseFloat(s.price) || 0 }));
 
         res.json({ success: true, data: result });
     } catch (error) {
@@ -105,6 +105,8 @@ exports.getPageById = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Page not found' });
         }
 
+        const page = pages[0];
+
         // Check permission for artist
         if (req.user.role === 'artist') {
             const [hasAccess] = await db.execute(
@@ -116,15 +118,17 @@ exports.getPageById = async (req, res) => {
             }
         }
 
-        // Get steps from project
-        const [steps] = await db.execute(
+        // Steps from parent project (single source of truth)
+        const [stepsResult] = await db.execute(
             `SELECT id, project_id, step_number, step_name, price, created_at
-             FROM project_steps WHERE project_id = ? ORDER BY step_number ASC`,
-            [pages[0].project_id]
+             FROM project_steps
+             WHERE project_id = ?
+             ORDER BY step_number ASC`,
+            [page.project_id]
         );
+        const steps = stepsResult.map(s => ({ ...s, price: parseFloat(s.price) || 0 }));
 
-        // Get tasks
-        const [tasks] = await db.execute(
+        const [tasksResult] = await db.execute(
             `SELECT t.*, u.name as assigned_to_name, u.profile_picture,
                     ps.step_number, ps.step_name, ps.price as step_price
              FROM tasks t
@@ -134,14 +138,18 @@ exports.getPageById = async (req, res) => {
              ORDER BY COALESCE(ps.step_number, 999), t.created_at ASC`,
             [id]
         );
+        const tasks = tasksResult.map(t => ({
+            ...t,
+            step_price: parseFloat(t.step_price) || 0,
+        }));
 
         res.json({
             success: true,
             data: {
-                ...pages[0],
+                ...page,
                 steps,
-                tasks
-            }
+                tasks,
+            },
         });
     } catch (error) {
         console.error(error);
@@ -155,24 +163,18 @@ exports.createPage = async (req, res) => {
     const connection = await db.getConnection();
 
     try {
-        console.log('=== CREATE PAGE REQUEST ===');
-        console.log('User:', req.user);
-        console.log('Body:', req.body);
-
         await connection.beginTransaction();
 
-        const { project_id, name, steps } = req.body;
+        const { project_id, name } = req.body;
 
-        // Validasi input
         if (!project_id || !name) {
             await connection.rollback();
             return res.status(400).json({
                 success: false,
-                message: 'Project and page name are required'
+                message: 'Project and page name are required',
             });
         }
 
-        // Ambil client_id dari project
         const [project] = await connection.execute(
             'SELECT id, client_id FROM projects WHERE id = ?',
             [project_id]
@@ -182,30 +184,22 @@ exports.createPage = async (req, res) => {
             await connection.rollback();
             return res.status(400).json({
                 success: false,
-                message: 'Project not found'
+                message: 'Project not found',
             });
         }
 
         const client_id = project[0].client_id;
-        console.log('Client ID from project:', client_id);
 
-        // Insert page dengan client_id
         const [result] = await connection.execute(
             `INSERT INTO pages (client_id, project_id, name, created_by)
              VALUES (?, ?, ?, ?)`,
-            [
-                client_id,
-                project_id,
-                name,
-                req.user.id
-            ]
+            [client_id, project_id, name, req.user.id]
         );
 
         const pageId = result.insertId;
 
         await connection.commit();
 
-        // Log activity (dengan error handling terpisah)
         try {
             await logActivity(
                 req.user.id,
@@ -220,21 +214,17 @@ exports.createPage = async (req, res) => {
             console.error('Failed to log activity:', logError);
         }
 
-        console.log('=== PAGE CREATED SUCCESSFULLY ===');
         res.status(201).json({
             success: true,
             message: 'Page created successfully',
-            data: { id: pageId }
+            data: { id: pageId },
         });
-
     } catch (error) {
         await connection.rollback();
-        console.error('=== CREATE PAGE ERROR ===');
-        console.error('Error:', error);
-        console.error('Stack:', error.stack);
+        console.error(error);
         res.status(500).json({
             success: false,
-            message: 'Server error: ' + error.message
+            message: 'Server error: ' + error.message,
         });
     } finally {
         connection.release();
@@ -242,37 +232,34 @@ exports.createPage = async (req, res) => {
 };
 
 
-// Update page
+// Update page (name only — steps are managed at project level)
 exports.updatePage = async (req, res) => {
-    const connection = await db.getConnection();
     try {
         const { id } = req.params;
-        const { name, steps } = req.body;
+        const { name } = req.body;
 
-        const [existing] = await connection.execute('SELECT * FROM pages WHERE id = ?', [id]);
+        const [existing] = await db.execute('SELECT * FROM pages WHERE id = ?', [id]);
         if (existing.length === 0) {
             return res.status(404).json({ message: 'Page not found' });
         }
 
-        await connection.beginTransaction();
-
         if (name !== undefined) {
-            await connection.execute(
-                `UPDATE pages SET name = ? WHERE id = ?`,
-                [name, id]
-            );
+            await db.execute(`UPDATE pages SET name = ? WHERE id = ?`, [name, id]);
         }
 
-        await connection.commit();
-        await logActivity(req.user.id, 'updated_page', 'page', id, existing[0], { name, steps_count: steps?.length }, req.ip);
+        await logActivity(req.user.id, 'updated_page', 'page', id, existing[0], { name }, req.ip);
 
-        res.json({ success: true, message: 'Page updated successfully' });
+        res.json({
+            success: true,
+            message: 'Page updated successfully',
+            data: {
+                id: parseInt(id, 10),
+                name: name ?? existing[0].name,
+            },
+        });
     } catch (error) {
-        await connection.rollback();
         console.error(error);
         res.status(500).json({ message: 'Server error' });
-    } finally {
-        connection.release();
     }
 };
 

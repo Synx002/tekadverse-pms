@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Task, TaskStatus } from '../../types/task.types';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { tasksApi } from '../../api/tasks.api';
 import { toast } from 'sonner';
 import { useAuthStore } from '../../store/authStore';
+import { MarkAsDoneModal } from '../../components/tasks/MarkAsDoneModal';
 
 interface TaskBoardProps {
     tasks: Task[];
@@ -25,8 +26,28 @@ const columns: { status: TaskStatus; title: string; color: string }[] = [
 export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
     const navigate = useNavigate();
     const { user } = useAuthStore();
+
     const [draggedTaskId, setDraggedTaskId] = useState<number | null>(null);
     const [collapsedStatuses, setCollapsedStatuses] = useState<TaskStatus[]>([]);
+    const [doneTask, setDoneTask] = useState<Task | null>(null);
+
+    const scrollRef = useRef<HTMLDivElement | null>(null);
+
+    const handleScroll = () => {
+        if (scrollRef.current) {
+            sessionStorage.setItem(
+                'taskboard-scroll-x',
+                scrollRef.current.scrollLeft.toString()
+            );
+        }
+    };
+
+    useLayoutEffect(() => {
+        const savedScroll = sessionStorage.getItem('taskboard-scroll-x');
+        if (savedScroll && scrollRef.current) {
+            scrollRef.current.scrollLeft = parseInt(savedScroll, 10);
+        }
+    }, []);
 
     const toggleColumn = (status: TaskStatus) => {
         setCollapsedStatuses(prev =>
@@ -67,6 +88,12 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
 
         const task = tasks.find(t => t.id === draggedTaskId);
         if (!task || task.status === newStatus) return;
+
+        if (newStatus === 'done') {
+            setDoneTask(task);
+            setDraggedTaskId(null);
+            return;
+        }
 
         try {
             await tasksApi.updateStatus(draggedTaskId, newStatus);
@@ -123,8 +150,12 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
                                                 className={`bg-white rounded-lg p-4 shadow-sm active:shadow-md transition-shadow cursor-pointer border-l-4 ${getPriorityColor(task.priority)}`}
                                             >
                                                 <div className="mb-2">
-                                                    <h4 className="font-bold text-gray-900 leading-tight">{task.project?.name || task.project_name}</h4>
+                                                    <h4 className="font-bold text-gray-900 leading-tight">
+                                                        {task.step_name || '—'}
+                                                    </h4>
                                                     <div className="flex flex-wrap items-center gap-1.5 mt-1 text-sm">
+                                                        <span className="text-gray-500">{task.project?.name || task.project_name}</span>
+                                                        <span className="text-gray-300">/</span>
                                                         <span className="font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">{task.page?.name || task.page_name || 'No Page'}</span>
                                                         {task.step_name && (
                                                             <>
@@ -178,7 +209,11 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
             </div>
 
             {/* Desktop View - Internal Horizontal Scroll */}
-            <div className="hidden lg:block overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+            <div 
+                ref={scrollRef}
+                onScroll={handleScroll}
+                className="hidden lg:block overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent"
+            >
                 <div className="flex gap-4 min-w-full w-fit">
                     {columns.map((column) => {
                         const columnTasks = getTasksByStatus(column.status);
@@ -208,17 +243,24 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
                                             <div
                                                 key={task.id}
                                                 onClick={() => navigate(`/tasks/${task.id}`)}
-                                                draggable={!(user?.role === 'artist' && ['need_update', 'under_review', 'approved', 'done'].includes(task.status))}
+                                                draggable={
+                                                    task.status !== 'done' && 
+                                                    !(user?.role === 'artist' && ['under_review', 'approved'].includes(task.status))
+                                                }
                                                 onDragStart={(e) => handleDragStart(e, task.id)}
                                                 className={`bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer border-l-4 ${getPriorityColor(task.priority)} ${draggedTaskId === task.id ? 'opacity-50' : ''
-                                                    } ${user?.role === 'artist' && ['need_update', 'under_review', 'approved', 'done'].includes(task.status)
+                                                    } ${task.status === 'done' || (user?.role === 'artist' && ['under_review', 'approved'].includes(task.status))
                                                         ? 'cursor-default hover:shadow-none bg-gray-50'
                                                         : ''
-                                                    }`}
+                                                    } `}
                                             >
                                                 <div className="mb-2">
-                                                    <h4 className="font-bold text-gray-900 text-sm leading-tight">{task.project?.name || task.project_name}</h4>
+                                                    <h4 className="font-bold text-gray-900 text-sm leading-tight">
+                                                        {task.step_name || '—'}
+                                                    </h4>
                                                     <div className="flex flex-wrap items-center gap-1.5 mt-1 text-xs">
+                                                        <span className="text-gray-500">{task.project?.name || task.project_name}</span>
+                                                        <span className="text-gray-300">/</span>
                                                         <span className="font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">{task.page?.name || task.page_name || 'No Page'}</span>
                                                         {task.step_name && (
                                                             <>
@@ -268,6 +310,16 @@ export const TaskBoard = ({ tasks, onRefresh }: TaskBoardProps) => {
                     })}
                 </div>
             </div>
+            {doneTask && (
+            <MarkAsDoneModal
+                task={doneTask}
+                onClose={() => setDoneTask(null)}
+                onSuccess={() => {
+                setDoneTask(null);
+                onRefresh?.();
+                }}
+            />
+            )}
         </div>
     );
 };

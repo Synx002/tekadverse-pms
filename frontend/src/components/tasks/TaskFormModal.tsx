@@ -2,20 +2,19 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { X, Calendar } from 'lucide-react';
+import { X, Calendar, DollarSign, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { tasksApi } from '../../api/tasks.api';
 import { pagesApi } from '../../api/pages.api';
 import { usersApi } from '../../api/users.api';
 import type { Task, CreateTaskData, UpdateTaskData } from '../../types/task.types';
-import type { Page, PageStep } from '../../types/page.types';
+import type { Page } from '../../types/page.types';
+import type { ProjectStep } from '../../types/project.types';
 import type { User } from '../../types/user.types';
 import { useAuthStore } from '../../store/authStore';
-import { projectsApi } from '../../api/projects.api';
-import type { Project } from '../../types/project.types';
+import { SelectField } from '../ui/SelectedField';
 
 const taskSchemaBase = z.object({
-    project_id: z.number().optional().or(z.literal(0)),
     description: z.string().optional().or(z.literal('')),
     page_id: z.number().min(1, 'Please select a page'),
     step_id: z.number().optional(),
@@ -23,6 +22,7 @@ const taskSchemaBase = z.object({
     priority: z.enum(['low', 'medium', 'high', 'urgent']),
     deadline: z.string().optional().or(z.literal('')),
     status: z.enum(['todo', 'work in progress', 'finished', 'need_update', 'under_review', 'approved', 'done', 'dropped']).optional(),
+    price: z.number().min(0, 'Price must be 0 or more').optional(),
 });
 
 type TaskFormData = z.infer<typeof taskSchemaBase>;
@@ -37,9 +37,8 @@ interface TaskFormModalProps {
 export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModalProps) => {
     const [loading, setLoading] = useState(false);
     const [pages, setPages] = useState<Page[]>([]);
-    const [projects, setProjects] = useState<Project[]>([]);
     const [artists, setArtists] = useState<User[]>([]);
-    const [availableSteps, setAvailableSteps] = useState<PageStep[]>([]);
+    const [availableSteps, setAvailableSteps] = useState<ProjectStep[]>([]);
     const [fetchingData, setFetchingData] = useState(true);
     const { user } = useAuthStore();
     const isArtist = user?.role === 'artist';
@@ -57,13 +56,12 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
         register,
         handleSubmit,
         watch,
+        setValue,
         formState: { errors },
         reset,
-        setValue,
     } = useForm<TaskFormData>({
         resolver: zodResolver(taskSchema),
         defaultValues: {
-            project_id: 0,
             description: '',
             page_id: pageId || 0,
             step_id: 0,
@@ -71,49 +69,17 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
             priority: 'medium',
             deadline: '',
             status: 'todo',
+            price: 0,
         },
     });
 
-    const watchedProjectId = watch('project_id');
     const watchedPageId = watch('page_id');
-    const currentPageId = pageId || watchedPageId || task?.page_id;
-
-    // Filter pages by selected project
-    const filteredPages = pages.filter(p => !watchedProjectId || p.project_id === watchedProjectId);
-
-    const loadData = async () => {
-        if (isArtist) {
-            setFetchingData(false);
-            return;
-        }
-
-        try {
-            setFetchingData(true);
-            const [projectsRes, pagesRes, artistsRes] = await Promise.all([
-                projectsApi.getAll(),
-                pagesApi.getAll(),
-                usersApi.getArtists(),
-            ]);
-            setProjects(projectsRes.data || []);
-            setPages(pagesRes.data || []);
-            setArtists(artistsRes.data || []);
-        } catch (error) {
-            toast.error('Failed to load projects or artists');
-        } finally {
-            setFetchingData(false);
-        }
-    };
+    const currentPageId = pageId || watchedPageId || task?.page_id || 0;
 
     useEffect(() => {
         loadData();
-    }, []); // Only on mount
-
-    useEffect(() => {
-        if (task && pages.length > 0) {
-            // Find project_id for the task's page
-            const taskPage = pages.find(p => p.id === task.page_id);
+        if (task) {
             reset({
-                project_id: taskPage?.project_id || 0,
                 description: task.description || '',
                 page_id: task.page_id,
                 step_id: task.step_id || 0,
@@ -121,31 +87,10 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                 priority: task.priority,
                 deadline: task.deadline ? new Date(task.deadline).toISOString().split('T')[0] : '',
                 status: task.status,
+                price: task.price ?? 0,
             });
         }
-    }, [task, reset, pages]); // Sync with task ONLY when task OR pages load
-
-    // Handle initial pageId from props
-    useEffect(() => {
-        if (pageId && pages.length > 0) {
-            const page = pages.find(p => p.id === pageId);
-            if (page) {
-                setValue('project_id', page.project_id);
-                setValue('page_id', page.id);
-            }
-        }
-    }, [pageId, pages, setValue]);
-
-    // Reset page_id if project_id changes and current page doesn't belong to project
-    useEffect(() => {
-        if (watchedProjectId && watchedPageId && !isEdit) { // Only reset if NOT editing (prevent overwrite on load)
-            const page = pages.find(p => p.id === watchedPageId);
-            if (page && page.project_id !== watchedProjectId) {
-                setValue('page_id', 0);
-                setValue('step_id', 0);
-            }
-        }
-    }, [watchedProjectId, pages, setValue, watchedPageId, isEdit]);
+    }, [task, reset]);
 
     // Fetch available steps when page is selected
     useEffect(() => {
@@ -164,6 +109,27 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
         loadSteps();
     }, [currentPageId, task?.id, isArtist]);
 
+    const loadData = async () => {
+        if (isArtist) {
+            setFetchingData(false);
+            return;
+        }
+
+        try {
+            setFetchingData(true);
+            const [pagesRes, artistsRes] = await Promise.all([
+                pagesApi.getAll(),
+                usersApi.getArtists(),
+            ]);
+            setPages(pagesRes.data || []);
+            setArtists(artistsRes.data || []);
+        } catch (error) {
+            toast.error('Failed to load projects or artists');
+        } finally {
+            setFetchingData(false);
+        }
+    };
+
     const onSubmit = async (data: TaskFormData) => {
         try {
             setLoading(true);
@@ -174,6 +140,7 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                 step_id: data.step_id && data.step_id > 0 ? data.step_id : undefined,
                 description: data.description || undefined,
                 deadline: data.deadline || undefined,
+                price: data.price !== undefined && data.price !== null ? Number(data.price) : undefined,
             };
 
             if (isEdit && task) {
@@ -209,23 +176,6 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                 </div>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-5">
-                    {!isArtist && (
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Project</label>
-                            <select
-                                {...register('project_id', { valueAsNumber: true })}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
-                                disabled={(!!pageId && !isEdit) || isArtist || isEdit}
-                            >
-                                <option value={0}>Select Project</option>
-                                {projects.map((p) => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
-
-
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-700">Description</label>
                         <textarea
@@ -239,7 +189,6 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Page</label>
                             {isArtist ? (
                                 <input
                                     value={task?.page_name || 'Current Page'}
@@ -247,27 +196,23 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
                                 />
                             ) : (
-                                <select
+                                <SelectField label="Page" {...register('page_id', { valueAsNumber: true })} error={errors.page_id?.message}
                                     {...register('page_id', { valueAsNumber: true })}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
-                                    disabled={(!!pageId && !isEdit) || isArtist || (!watchedProjectId && !isEdit)}
+                                    disabled={(!!pageId && !isEdit) || isArtist}
                                 >
                                     <option value={0}>Select Page</option>
-                                    {filteredPages.map((p) => (
-                                        <option key={p.id} value={p.id}>{p.name}</option>
-                                    ))}
-                                </select>
+                                    {pages.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                </SelectField>
                             )}
                             {errors.page_id && <p className="text-xs text-red-500">{errors.page_id.message}</p>}
                         </div>
 
-                        {!isArtist && (
+                        {!isArtist && currentPageId > 0 && (
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">Step</label>
-                                <select
+                                <SelectField label="Step" {...register('step_id', { valueAsNumber: true })} error={errors.step_id?.message}
                                     {...register('step_id', { valueAsNumber: true })}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
-                                    disabled={isArtist || (!watchedPageId && !isEdit)}
+                                    disabled={isArtist}
                                 >
                                     <option value={0}>Select Step</option>
                                     {availableSteps.map((s) => (
@@ -275,18 +220,17 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                                             {s.step_number}. {s.step_name}
                                         </option>
                                     ))}
-                                </select>
-                                {/* {availableSteps.length === 0 && (
+                                </SelectField>
+                                {availableSteps.length === 0 && currentPageId > 0 && (
                                     <p className="text-xs text-amber-600">
                                         No steps available. Ensure the page has steps defined, and that not all steps are already assigned.
                                     </p>
-                                )} */}
+                                )}
                                 {errors.step_id && <p className="text-xs text-red-500">{errors.step_id.message}</p>}
                             </div>
                         )}
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Assign To Artist</label>
                             {isArtist ? (
                                 <input
                                     value={task?.assigned_to_name || task?.assignee?.name || 'Me'}
@@ -294,7 +238,7 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
                                 />
                             ) : (
-                                <select
+                                <SelectField label="Assign To Artist" {...register('assigned_to', { valueAsNumber: true })} error={errors.assigned_to?.message}
                                     {...register('assigned_to', { valueAsNumber: true })}
                                     disabled={isArtist}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
@@ -303,14 +247,13 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                                     {artists.map((a) => (
                                         <option key={a.id} value={a.id}>{a.name}</option>
                                     ))}
-                                </select>
+                                </SelectField>
                             )}
                             {errors.assigned_to && <p className="text-xs text-red-500">{errors.assigned_to.message}</p>}
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Priority</label>
-                            <select
+                            <SelectField label="Priority" {...register('priority')} error={errors.priority?.message}
                                 {...register('priority')}
                                 disabled={isArtist}
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
@@ -319,22 +262,56 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                                 <option value="medium">Medium</option>
                                 <option value="high">High</option>
                                 <option value="urgent">Urgent</option>
-                            </select>
+                            </SelectField>
                             {errors.priority && <p className="text-xs text-red-500">{errors.priority.message}</p>}
                         </div>
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Deadline</label>
                             <div className="relative">
-                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <input
                                     {...register('deadline')}
                                     type="date"
                                     disabled={isArtist}
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
                                 />
                             </div>
                         </div>
+
+                        {/* Price field — only visible to manager/admin */}
+                        {!isArtist && (
+                            <div className="space-y-3">
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium text-gray-700">
+                                        Task Price (IDR)
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            {...register('price', { valueAsNumber: true })}
+                                            type="number"
+                                            min="0"
+                                            step="1000"
+                                            placeholder="e.g. 150000"
+                                            disabled={isEdit && task?.status === 'done'}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                                        />
+                                    </div>
+                                    {errors.price && <p className="text-xs text-red-500">{errors.price.message}</p>}
+                                </div>
+                                {isEdit && task?.status === 'done' ? (
+                                    <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                        <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                                        <p className="text-xs text-amber-800 leading-relaxed">
+                                            Task sudah berstatus <span className="font-semibold">Done</span> dan earning untuk artist sudah otomatis dibuat. Harga tidak dapat diubah lagi untuk mencegah selisih pembayaran.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <p className="text-[10px] text-gray-400">
+                                        This is the amount artist earns when task is marked as Done.
+                                    </p>
+                                )}
+                            </div>
+                        )}
 
                         {isEdit && (
                             <div className="space-y-2">
@@ -351,7 +328,7 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                     >
                                         <option value="todo">To Do</option>
-                                        <option value="work in progress">Work In Progress</option>
+                                        <option value="work in progress">Working</option>
                                         <option value="finished">Finished</option>
                                         <option value="need_update">Need Update</option>
                                         <option value="under_review">Under Review</option>
