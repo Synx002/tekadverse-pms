@@ -235,7 +235,7 @@ export const TaskDetail = () => {
                         <div className="space-y-4 mb-5">
                             {comments.map((comment) => (
                                 <div key={comment.id} className="flex gap-3">
-                                    <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 text-gray-600 flex items-center justify-center text-sm font-medium flex-shrink-0">
+                                    <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 text-gray-600 flex items-center justify-center text-sm font-medium shrink-0">
                                         {comment.profile_picture ? (
                                             <img src={`${BASE_URL}/${comment.profile_picture}`} alt={comment.user_name} className="w-full h-full object-cover" />
                                         ) : (
@@ -268,7 +268,7 @@ export const TaskDetail = () => {
                                 disabled={submitting || !newComment.trim()}
                                 className="px-3.5 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                             >
-                                <Send className="w-4 h-4" />
+                                <Send className="w-5 h-4" />
                             </button>
                         </form>
                     </div>

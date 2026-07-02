@@ -201,7 +201,7 @@ export const PageDetail: React.FC = () => {
                                         className="flex items-center justify-between gap-2 p-2 bg-gray-50 rounded-lg"
                                     >
                                         <div className="flex items-center gap-2 min-w-0">
-                                            <div className="flex items-center justify-center w-6 h-6 flex-shrink-0 bg-blue-600 text-white text-xs font-bold rounded-full">
+                                            <div className="flex items-center justify-center w-6 h-6 shrink-0 bg-blue-600 text-white text-xs font-bold rounded-full">
                                                 {step.step_number}
                                             </div>
                                             <span className="text-sm text-gray-700 truncate">{step.step_name}</span>
@@ -228,7 +228,7 @@ export const PageDetail: React.FC = () => {
                                 <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                                     <span className="text-sm text-gray-600">Yang sudah diselesaikan</span>
                                     <span className="font-semibold text-green-600">
-                                         {tasks
+                                        {tasks
                                             .filter(t => ['done', 'approved'].includes(t.status))
                                             .length} Tasks
                                     </span>

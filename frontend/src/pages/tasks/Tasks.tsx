@@ -89,7 +89,7 @@ export const Tasks = () => {
         const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
 
         // Resolve project_id from multiple sources
-        
+
         const page = pages.find(p => p.id === task.page_id);
         const taskProjectId = task.project?.id || task.page?.project_id || page?.project_id;
 
@@ -144,7 +144,7 @@ export const Tasks = () => {
                             setSelectedTask(null);
                             setShowModal(true);
                         }}
-                        className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors cursor-pointer w-full sm:w-auto flex-shrink-0 text-sm sm:text-base"
+                        className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors cursor-pointer w-full sm:w-auto shrink-0 text-sm sm:text-base"
                     >
                         <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                         <span>New Task</span>
@@ -242,10 +242,10 @@ export const Tasks = () => {
 
                     {/* Filters Row */}
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-                        
+
                         {/* Status Filter */}
                         <div className="flex items-center gap-2 w-full sm:flex-1">
-                            <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 flex-shrink-0" />
+                            <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 shrink-0" />
                             <select
                                 value={statusFilter}
                                 onChange={(e) => setStatusFilter(e.target.value as TaskStatus | 'all')}
@@ -264,7 +264,7 @@ export const Tasks = () => {
                         </div>
 
                         {/* Date Filter Range */}
-                        <div className="flex flex-col sm:flex-row gap-2 w-full sm:flex-[2]">
+                        <div className="flex flex-col sm:flex-row gap-2 w-full sm:flex-2">
                             <div className="flex items-center gap-2 w-full">
                                 <span className="text-gray-500 text-sm whitespace-nowrap">From:</span>
                                 <input

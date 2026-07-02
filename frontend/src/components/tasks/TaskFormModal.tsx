@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { X, Calendar, DollarSign, AlertCircle } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { tasksApi } from '../../api/tasks.api';
 import { pagesApi } from '../../api/pages.api';
@@ -56,7 +56,6 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
         register,
         handleSubmit,
         watch,
-        setValue,
         formState: { errors },
         reset,
     } = useForm<TaskFormData>({
@@ -300,7 +299,7 @@ export const TaskFormModal = ({ task, pageId, onClose, onSuccess }: TaskFormModa
                                 </div>
                                 {isEdit && task?.status === 'done' ? (
                                     <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                        <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                                        <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                                         <p className="text-xs text-amber-800 leading-relaxed">
                                             Task sudah berstatus <span className="font-semibold">Done</span> dan earning untuk artist sudah otomatis dibuat. Harga tidak dapat diubah lagi untuk mencegah selisih pembayaran.
                                         </p>
