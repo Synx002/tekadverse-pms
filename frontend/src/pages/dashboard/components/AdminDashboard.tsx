@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, Briefcase, Banknote } from 'lucide-react';
+import { SpendChart } from '../../../components/dashboard/SpendChart';
 import type { Task } from '../../../types/task.types';
 import type { Project } from '../../../types/project.types';
 import type { User } from '../../../types/user.types';
@@ -68,6 +69,9 @@ export const AdminDashboard = ({ projects, tasks, users, payouts, loading }: Adm
                     </div>
                 ))}
             </div>
+
+            {/* Total Spend Chart Section */}
+            <SpendChart />
 
             {payouts && payouts.payouts.length > 0 && (
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">

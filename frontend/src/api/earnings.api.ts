@@ -38,6 +38,29 @@ export interface PendingTask {
     client_name: string;
 }
 
+export interface SpendDataPoint {
+    key: string;
+    label: string;
+    total_spend: number;
+    paid_spend: number;
+    pending_spend: number;
+    task_count: number;
+}
+
+export interface SpendAnalyticsSummary {
+    total_spend: number;
+    paid_spend: number;
+    pending_spend: number;
+    total_tasks: number;
+    average_spend: number;
+}
+
+export interface SpendAnalyticsResponse {
+    period: 'weekly' | 'monthly' | 'yearly';
+    chartData: SpendDataPoint[];
+    summary: SpendAnalyticsSummary;
+}
+
 export const earningsApi = {
     getMyEarnings: async () => {
         const { data } = await api.get<ApiResponse<ArtistEarnings>>('/earnings/my-earnings');
@@ -51,6 +74,12 @@ export const earningsApi = {
         const { data } = await api.get<ApiResponse<GlobalFinanceStats>>('/earnings/global-stats');
         return data;
     },
+    getSpendAnalytics: async (period: 'weekly' | 'monthly' | 'yearly' = 'monthly') => {
+        const { data } = await api.get<ApiResponse<SpendAnalyticsResponse>>('/earnings/spend-analytics', {
+            params: { period }
+        });
+        return data;
+    },
     getMyPendingTasks: async () => {
         const { data } = await api.get<ApiResponse<PendingTask[]>>('/earnings/my-pending-tasks');
         return data;
@@ -60,4 +89,5 @@ export const earningsApi = {
         return data;
     },
 };
+
 
