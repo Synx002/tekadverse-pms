@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { FolderKanban, ClipboardCheck, AlertCircle, Users, Banknote } from 'lucide-react';
+import { SpendChart } from '../../../components/dashboard/SpendChart';
 import type { Task } from '../../../types/task.types';
 import type { Project } from '../../../types/project.types';
+import type { User } from '../../../types/user.types';
 
 interface PayoutItem {
     artist_id: number;
@@ -12,15 +14,18 @@ interface PayoutItem {
 
 interface ManagerDashboardProps {
     projects: Project[];
+    users: User[];
     tasks: Task[];
     payouts: { payouts: PayoutItem[]; total_to_pay: number } | null;
     loading: boolean;
 }
 
-export const ManagerDashboard = ({ projects, tasks, payouts, loading }: ManagerDashboardProps) => {
+export const ManagerDashboard = ({ projects, users, tasks, payouts, loading }: ManagerDashboardProps) => {
     const navigate = useNavigate();
 
     const activeProjects = projects.filter(p => p.status === 'active');
+    // Active artists (role === 'artist' and is_active)
+    const activeArtists = users.filter(u => u.role === 'artist' && Boolean(u.is_active));
     const tasksToReview = tasks.filter(t => ['under_review', 'finished'].includes(t.status));
     const urgentTasks = tasks.filter(t => t.priority === 'urgent' && !['done', 'approved', 'dropped'].includes(t.status));
 
@@ -45,6 +50,13 @@ export const ManagerDashboard = ({ projects, tasks, payouts, loading }: ManagerD
             icon: AlertCircle,
             color: 'bg-red-600',
             subtitle: 'Priority items'
+        },  
+        {
+            title: 'Active Artists',
+            value: activeArtists.length,
+            icon: Users,
+            color: 'bg-green-600',
+            subtitle: 'Active artists'
         }
     ];
 
@@ -66,7 +78,7 @@ export const ManagerDashboard = ({ projects, tasks, payouts, loading }: ManagerD
 
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {stats.map((stat, idx) => (
                     <div key={idx} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                         <div className="flex items-center justify-between">
@@ -83,8 +95,11 @@ export const ManagerDashboard = ({ projects, tasks, payouts, loading }: ManagerD
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Tasks Needing Review */}
+            {/* Total Spend Chart Section */}
+            <SpendChart />
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Kolom 1: Tasks Needing Review */}
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                     <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-purple-50">
                         <h2 className="font-semibold text-purple-900">Review Queue</h2>
@@ -119,7 +134,7 @@ export const ManagerDashboard = ({ projects, tasks, payouts, loading }: ManagerD
                     </div>
                 </div>
 
-                {/* Pembayaran ke Artist */}
+                {/* Kolom 2: Pembayaran ke Artist */}
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                     <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-amber-50">
                         <h2 className="font-semibold text-amber-900 flex items-center gap-2">
@@ -156,6 +171,46 @@ export const ManagerDashboard = ({ projects, tasks, payouts, loading }: ManagerD
                         ) : (
                             <div className="p-8 text-center text-gray-500 italic">
                                 Tidak ada pembayaran tertunda. Uang akan muncul saat task status Done/Approved.
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Kolom 3: Daftar Artist Aktif */}
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-blue-50">
+                        <h2 className="font-semibold text-blue-900 flex items-center gap-2">
+                            Daftar Artist Aktif
+                        </h2>
+                        <span className="text-xs font-bold bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full">
+                            {activeArtists.length}
+                        </span>
+                    </div>
+                    <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                        {activeArtists.length > 0 ? (
+                            <table className="w-full text-sm">
+                                <thead className="bg-gray-50 sticky top-0">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left font-medium text-gray-700">Nama</th>
+                                        <th className="px-4 py-3 text-left font-medium text-gray-700">Email</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {activeArtists.map((artist) => (
+                                        <tr 
+                                            key={artist.id} 
+                                            className="hover:bg-gray-50 cursor-pointer transition-colors" 
+                                            onClick={() => navigate(`/users/${artist.id}`)}
+                                        >
+                                            <td className="px-4 py-3 font-medium text-gray-900">{artist.name}</td>
+                                            <td className="px-4 py-3 text-gray-600">{artist.email}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        ) : (
+                            <div className="p-8 text-center text-gray-500 italic">
+                                Tidak ada artist aktif.
                             </div>
                         )}
                     </div>

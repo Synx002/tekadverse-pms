@@ -36,7 +36,7 @@ export const Dashboard = () => {
             const tasksRes = await tasksApi.getAll();
             setTasks(tasksRes.data || []);
 
-            if (user?.role === 'admin') {
+            if (user?.role === 'admin' || user?.role === 'manager') {
                 const usersRes = await usersApi.getAll();
                 setUsers(usersRes.data || []);
             }
@@ -81,7 +81,7 @@ export const Dashboard = () => {
             case 'admin':
                 return <AdminDashboard projects={projects} tasks={tasks} users={users} payouts={payouts} loading={loading} />;
             case 'manager':
-                return <ManagerDashboard projects={projects} tasks={tasks} payouts={payouts} loading={loading} />;
+                return <ManagerDashboard projects={projects} tasks={tasks} payouts={payouts} users={users} loading={loading} />;
             case 'artist':
                 return <ArtistDashboard user={user} tasks={tasks} earnings={artistEarnings} loading={loading} />;
             default:
